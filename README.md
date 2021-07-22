@@ -179,7 +179,7 @@ subbuckets to get to higher scales.
 The diagram below shows dividing the mantissa range into 8 log subbuckets, shown with blue lines. At the same time, the
 range is also divided into 16 linear subbuckets, shown as black ticks along the x axis.
 
-![Lookup table chart](./README.lookupTable.svg)
+![Lookup table chart](./LookupTable.svg)
 
 With 2 times more linear subbuckets than log scale subbuckets, linear subbuckets are narrower. A linear subbucket is
 either completely enclosed in a log subbucket, or spans 2 log subbuckets. The linear to log bucket ratio can probably be
@@ -283,3 +283,5 @@ If you believe you have found a security vulnerability in this project or any of
 ## License
 
 NrSketch is licensed under the [Apache 2.0](http://apache.org/licenses/LICENSE-2.0.txt) License.
+
+NrSketch does not use any third party code or libraries. It only uses standard Java library classes such as ArrayList.

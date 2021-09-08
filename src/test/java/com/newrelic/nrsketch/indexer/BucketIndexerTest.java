@@ -195,4 +195,33 @@ public class BucketIndexerTest {
             assertEquals((1 << scale) - 1, logLookupIndexer.getSubBucketIndex(DoubleFormat.MANTISSA_MASK));
         }
     }
+
+    @Test
+    public void tmp() {
+        final int scale = 52;
+        for (int precision = 1; precision <= scale; ++precision) {
+            SubBucketIndexer indexerLog = new SubBucketLogIndexer(precision);
+            System.out.print("precision = " + precision);
+            //assertEquals(0, indexerLog.getBucketIndex(1.)); // should always be 0
+            System.out.print("  bound=" + getBound(precision, (1L << precision) - 1));
+            System.out.println("  bucket index for Math.nextDown(1.) = " + indexerLog.getBucketIndex(Math.nextDown(1.))); // should always be -1
+        }
+    }
+
+    private static double getBound(final int scale, final long index) {
+        return Math.pow(2, Math.scalb((double)index, -scale));
+    }
+
+    @Test
+    public void testPowOfTwoInclusiveness() {
+        for (int exponent = -20; exponent <= 10; ++exponent) {
+            for (int precision = 1; precision < 40; ++precision) {
+                BucketIndexer indexerLog = new LogIndexer(precision);
+                double x = Math.scalb(1., exponent);
+                long expectedBucketIndex = (1L << precision) * exponent;
+                assertEquals(expectedBucketIndex, indexerLog.getBucketIndex(x), 1);
+                assertEquals(expectedBucketIndex - 1, indexerLog.getBucketIndex(Math.nextDown(x)), 1);
+            }
+        }
+    }
 }

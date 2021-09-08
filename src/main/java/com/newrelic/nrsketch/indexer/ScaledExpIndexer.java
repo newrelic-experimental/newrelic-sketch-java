@@ -17,6 +17,20 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
         return Math.pow(2, Math.pow(2, -scale));
     }
 
+    // When scale is high, base is very close to 1, in the binary form like 1.000000XXXX,
+    // where there are many leading zero bits before the non-zero portion of XXXX.
+    // The effective significant bits on the base's mantissa is greatly reduced in this case.
+    // Any inaccuracy in base will be magnified when computing value to index or index to value mapping.
+    // Therefore we should avoid using base as intermediate result.
+    //
+    public static double getBucketStart(final int scale, final long index) {
+        // bucketStart = base ^ index
+        // = (2^(2^-scale))^index
+        // = 2^(2^-scale * index)
+        // = 2^(index * 2^-scale))
+        return Math.pow(2, Math.scalb((double) index, -scale));
+    }
+
     public static long getMaxIndex(final int scale) {
         // Scale > 0: max exponent followed by max subbucket index.
         // Scale <= 0: max exponent with -scale bits truncated.
@@ -46,6 +60,11 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
 
     public long getMinIndexNormal() {
         return getMinIndexNormal(scale);
+    }
+
+    @Override
+    public double getBucketStart(final long index) {
+        return getBucketStart(scale, index);
     }
 
     @Override

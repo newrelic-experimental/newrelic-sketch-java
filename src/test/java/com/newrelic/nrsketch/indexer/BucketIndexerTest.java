@@ -7,6 +7,8 @@ package com.newrelic.nrsketch.indexer;
 import com.newrelic.nrsketch.DoubleFormat;
 import org.junit.Test;
 
+import java.util.function.Function;
+
 import static com.newrelic.nrsketch.indexer.SubBucketLookupIndexer.binarySearch;
 import static com.newrelic.nrsketch.indexer.SubBucketLookupIndexer.getLogBoundMantissas;
 import static org.junit.Assert.assertEquals;
@@ -14,8 +16,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class BucketIndexerTest {
-    public static final double DELTA = 1e-13; // Floating point comparison relative delta.
-    public static final double FUDGE = 1 + 1e-11; // When value is on or near a bound, apply the fudge factor to make it fall on the expected side a bound for all indexers.
+    public static final double DELTA = 1e-14; // Floating point comparison relative delta.
+    public static final double FUDGE = 1 + 1e-13; // When value is on or near a bound, apply the fudge factor to make it fall on the expected side a bound for all indexers.
 
     @Test
     public void testGetBase() {
@@ -54,8 +56,9 @@ public class BucketIndexerTest {
 
     @Test
     public void testLogBounds() {
-        final int nSubBuckets = 16;
-        final long[] logBounds = getLogBoundMantissas(nSubBuckets);
+        final int scale = 4;
+        final int nSubBuckets = 1 << scale;
+        final long[] logBounds = getLogBoundMantissas(scale);
         double base = 0;
         for (int i = 0; i < logBounds.length; i++) {
             final double d = DoubleFormat.makeDouble1To2(logBounds[i]);
@@ -197,30 +200,59 @@ public class BucketIndexerTest {
     }
 
     @Test
-    public void tmp() {
-        final int scale = 52;
-        for (int precision = 1; precision <= scale; ++precision) {
-            SubBucketIndexer indexerLog = new SubBucketLogIndexer(precision);
-            System.out.print("precision = " + precision);
-            //assertEquals(0, indexerLog.getBucketIndex(1.)); // should always be 0
-            System.out.print("  bound=" + getBound(precision, (1L << precision) - 1));
-            System.out.println("  bucket index for Math.nextDown(1.) = " + indexerLog.getBucketIndex(Math.nextDown(1.))); // should always be -1
-        }
-    }
-
-    private static double getBound(final int scale, final long index) {
-        return Math.pow(2, Math.scalb((double)index, -scale));
+    public void testSubBucketLookupIndexerHighScales() {
+        // Totally accurate for tested scales. Both roundTripIndexDelta and powerOf2IndexDelta at 0.
+        // Scales above 20 would use too much memory, thus are not tested.
+        testHighScales(SubBucketLookupIndexer::new, 20,0, 0);
     }
 
     @Test
-    public void testPowOfTwoInclusiveness() {
-        for (int exponent = -20; exponent <= 10; ++exponent) {
-            for (int precision = 1; precision < 40; ++precision) {
-                BucketIndexer indexerLog = new LogIndexer(precision);
-                double x = Math.scalb(1., exponent);
-                long expectedBucketIndex = (1L << precision) * exponent;
-                assertEquals(expectedBucketIndex, indexerLog.getBucketIndex(x), 1);
-                assertEquals(expectedBucketIndex - 1, indexerLog.getBucketIndex(Math.nextDown(x)), 1);
+    public void testLogIndexerHighScales() {
+        // Both roundTripIndexDelta and powerOf2IndexDelta at 1, allowing off by 1 bucketing.
+        // Beyond scale 49, we will need to increase powerOf2IndexDelta to 2 or 3.
+        testHighScales(LogIndexer::new, 49,1, 1);
+    }
+
+    @Test
+    public void testSubBucketLogIndexerHighScales() {
+        // Full scale up to 52.
+        // roundTripIndexDelta at 1, allowing off by 1 for value to index round trip.
+        // powerOf2IndexDelta at 0, due to the nature of subbucketing.
+        testHighScales(SubBucketLogIndexer::new, 52,1, 0);
+    }
+
+    private void testHighScales(final Function<Integer, BucketIndexer> indexerMaker,
+                                final int maxScale,
+                                final long roundTripIndexDelta,
+                                final long powerOf2IndexDelta
+    ) {
+        for (int scale = 1; scale <= maxScale; ++scale) {
+            final BucketIndexer indexer = indexerMaker.apply(scale);
+
+            // Test bucket start at 1 and 2
+            assertEquals(1, indexer.getBucketStart(0), 0);
+            assertEquals(2, ScaledExpIndexer.getBucketStart(scale, 1L << scale), 0);
+
+            // Test bucket -1 and 0.
+            assertEquals(-1, indexer.getBucketIndex(Math.nextDown(1D)));
+            assertEquals(0, indexer.getBucketIndex(1D));
+
+            // Test round trip
+            for (int index = 1; index < 10; index++) {
+                assertLongEquals(index, indexer.getBucketIndex(ScaledExpIndexer.getBucketStart(scale, index)), roundTripIndexDelta);
+            }
+
+            // Test round trip at higher index interval.
+            for (int index = 1; index < 1000; index += 100) {
+                assertLongEquals(index, indexer.getBucketIndex(ScaledExpIndexer.getBucketStart(scale, index)), roundTripIndexDelta);
+            }
+
+            // Test power of 2
+            for (int exponent = -10; exponent <= 10; ++exponent) {
+                final double value = Math.scalb(1D, exponent);
+                long expectedIndex = (1L << scale) * exponent;
+                assertLongEquals(expectedIndex, indexer.getBucketIndex(value), powerOf2IndexDelta);
+                assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(Math.nextDown(value)), powerOf2IndexDelta);
             }
         }
     }

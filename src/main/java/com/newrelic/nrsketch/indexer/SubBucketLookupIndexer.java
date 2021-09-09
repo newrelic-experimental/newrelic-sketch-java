@@ -18,7 +18,7 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
 
     public SubBucketLookupIndexer(final int scale) {
         super(scale);
-        final long[] logBounds = getLogBoundMantissas(1 << scale);
+        final long[] logBounds = getLogBoundMantissas(scale);
 
         // Linear bucket width must be equal or smaller than smallest (1st) log bucket.
         int linearScale = scale;
@@ -66,12 +66,11 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
 
     // Subdivide the [1, 2] space into nSubBuckets log subbuckets.
     // Return lower bound of each subbucket. Entry 0 starts at 1.
-    public static long[] getLogBoundMantissas(final int nSubBuckets) {
+    public static long[] getLogBoundMantissas(final int scale) {
+        final int nSubBuckets = 1 << scale;
         final long[] bounds = new long[nSubBuckets];
-        final double base = Math.pow(2, 1.0 / nSubBuckets); // base ^ nSubBuckets = 2
         for (int i = 0; i < nSubBuckets; i++) {
-            final double d = Math.pow(base, i);  // base^i. Entry 0 is always 1
-            bounds[i] = DoubleFormat.getMantissa(d);
+            bounds[i] = DoubleFormat.getMantissa(getBucketStart(scale, i) );
         }
         return bounds;
     }

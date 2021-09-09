@@ -17,11 +17,13 @@ import java.util.Iterator;
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.DELTA;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertDoubleEquals;
+import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertLongEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SimpleNrSketchTest {
+    public static final double DELTA = 1e-14; // Floating point comparison relative delta.
     public static final double ERROR_DELTA = 1.001; // for relative error comparison.
     public static final double SCALE4_ERROR = 0.02165746232622625;
 
@@ -229,7 +231,7 @@ public class SimpleNrSketchTest {
             if (Double.isNaN(expectedPercentiles[i])) {
                 assertTrue(Double.isNaN(actualPercentiles[i]));
             } else {
-                assertEquals(expectedPercentiles[i], actualPercentiles[i], 0);
+                assertDoubleEquals(expectedPercentiles[i], actualPercentiles[i], DELTA);
             }
         }
     }
@@ -628,7 +630,7 @@ public class SimpleNrSketchTest {
         verifyHistogram(h1, 3, -10, 100, new Bucket[]{
                 new Bucket(-10.0, 0.0, 1), // bucket 1
                 new Bucket(0.0, 0.0, 1), // bucket 2
-                new Bucket(99.99602407243958, 100.0, 1), // bucket 3
+                new Bucket(99.9960240724642, 100.0, 1), // bucket 3
         });
 
         SimpleNrSketch.merge(h1, h4);
@@ -657,14 +659,14 @@ public class SimpleNrSketchTest {
         h1.insert(50);
         verifyHistogram(h1, 4, -20, 50, new Bucket[]{
                 new Bucket(-20.0, 0.0, 3), // bucket 1
-                new Bucket(49.99801203621979, 50.0, 1), // bucket 2
+                new Bucket(49.9980120362321, 50.0, 1), // bucket 2
         });
 
         h1.insert(0);
         verifyHistogram(h1, 5, -20, 50, new Bucket[]{
                 new Bucket(-20.0, 0.0, 3), // bucket 1
                 new Bucket(0.0, 0.0, 1), // bucket 2
-                new Bucket(49.99801203621979, 50.0, 1), // bucket 3
+                new Bucket(49.9980120362321, 50.0, 1), // bucket 3
         });
     }
 
@@ -809,6 +811,12 @@ public class SimpleNrSketchTest {
         return maxRelativeError;
     }
 
+    public static void assertBucketEquals(final Bucket a, final Bucket b, final double delta) {
+        assertDoubleEquals(a.startValue , b.startValue, delta);
+        assertDoubleEquals(a.endValue , b.endValue, delta);
+        assertLongEquals(a.count , b.count, 0);
+    }
+
     static void verifyHistogram(final NrSketch histogram, final long expectedCount, final double expectedMin, final double expectedMax, final Bucket[] expectedBuckets) {
         dumpBuckets(histogram);
 
@@ -818,7 +826,7 @@ public class SimpleNrSketchTest {
 
         while (iterator.hasNext()) {
             final Bucket bucket = iterator.next();
-            assertEquals(expectedBuckets[index], bucket);
+            assertBucketEquals(expectedBuckets[index], bucket, DELTA);
             index++;
             countSum += bucket.count;
         }

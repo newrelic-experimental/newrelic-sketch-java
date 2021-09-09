@@ -99,21 +99,22 @@ public class BucketIndexerTest {
 
     @Test
     public void testSubBucketLogIndexer() {
-        for (int scale = 1; scale <= 5; scale++) {
+        for (int scale = 1; scale <= 10; scale++) {
             compareIndexers(new LogIndexer(scale), new SubBucketLogIndexer(scale));
         }
     }
 
     @Test
     public void testSubBucketLookupIndexer() {
-        for (int scale = 1; scale <= 5; scale++) {
+        for (int scale = 1; scale <= 10; scale++) {
             compareIndexers(new LogIndexer(scale), new SubBucketLookupIndexer(scale));
         }
     }
 
     @Test
     public void testExponentIndexer() {
-        for (int scale = 0; scale >= -5; scale--) {
+        // Scales below -8 will cause number overflow in testSelectedValues() because of very large base.
+        for (int scale = 0; scale >= -8; scale--) {
             compareIndexers(new LogIndexer(scale), new ExponentIndexer(scale));
         }
     }
@@ -190,69 +191,120 @@ public class BucketIndexerTest {
     }
 
     @Test
-    public void testLookupIndexerScale() {
-        for (int scale = 1; scale <= 20; scale++) {
-            final SubBucketIndexer logLookupIndexer = new SubBucketLookupIndexer(scale);
-            assertEquals(0, logLookupIndexer.getSubBucketIndex(0));
-            assertEquals(0, logLookupIndexer.getSubBucketIndex(1));
-            assertEquals((1 << scale) - 1, logLookupIndexer.getSubBucketIndex(DoubleFormat.MANTISSA_MASK));
-        }
+    public void testLogIndexerScales() {
+        // Limit to scale 43, because LogIndexer.getBucketStart() calls scaledPower(), which cannot handle
+        // more than 52 significant bits on index, and index needs about 10 bits for input exponent.
+        // This leaves 43 bits to resolve the input mantissa part.
+
+        testScales(LogIndexer::new,
+                1, // fromScale
+                43, // toScale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                1, // roundTripIndexDelta
+                2); // powerOf2IndexDelta
+
+        testScales(LogIndexer::new,
+                1, // fromScale
+                43, // toScale
+                -500, // fromExponent, higher exponent needs higher powerOf2IndexDelta
+                500, // toExponent
+                1, // roundTripIndexDelta
+                1); // powerOf2IndexDelta
+
+        testScales(LogIndexer::new,
+                -10, // fromScale. LogIndexer gives wrong result at scale -11 at Double.MIN end, likely because of float point overflow or underflow.
+                0, // toScale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                1, // roundTripIndexDelta
+                1); // powerOf2IndexDelta
     }
 
     @Test
-    public void testSubBucketLookupIndexerHighScales() {
-        // Totally accurate for tested scales. Both roundTripIndexDelta and powerOf2IndexDelta at 0.
-        // Scales above 20 would use too much memory, thus are not tested.
-        testHighScales(SubBucketLookupIndexer::new, 20,0, 0);
+    public void testSubBucketLogIndexerScales() {
+        testScales(SubBucketLogIndexer::new,
+                1, // fromScale
+                52, // toScale, highest possible scale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                1, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
     }
 
     @Test
-    public void testLogIndexerHighScales() {
-        // Both roundTripIndexDelta and powerOf2IndexDelta at 1, allowing off by 1 bucketing.
-        // Beyond scale 49, we will need to increase powerOf2IndexDelta to 2 or 3.
-        testHighScales(LogIndexer::new, 49,1, 1);
+    public void testSubBucketLookupIndexerScales() {
+        testScales(SubBucketLookupIndexer::new,
+                1, // fromScale
+                20, // toScale. Scales above 20 would use too much memory
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                0, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
     }
 
     @Test
-    public void testSubBucketLogIndexerHighScales() {
-        // Full scale up to 52.
-        // roundTripIndexDelta at 1, allowing off by 1 for value to index round trip.
-        // powerOf2IndexDelta at 0, due to the nature of subbucketing.
-        testHighScales(SubBucketLogIndexer::new, 52,1, 0);
+    public void testExponentIndexerScales() {
+        testScales(ExponentIndexer::new,
+                -11, // fromScale, lowest possible scale
+                0, // toScale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                0, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
     }
 
-    private void testHighScales(final Function<Integer, BucketIndexer> indexerMaker,
-                                final int maxScale,
-                                final long roundTripIndexDelta,
-                                final long powerOf2IndexDelta
+    private void testScales(final Function<Integer, ScaledExpIndexer> indexerMaker,
+                            final int fromScale,
+                            final int toScale,
+                            final int fromExponent,
+                            final int toExponent,
+                            final long roundTripIndexDelta,
+                            final long powerOf2IndexDelta
     ) {
-        for (int scale = 1; scale <= maxScale; ++scale) {
-            final BucketIndexer indexer = indexerMaker.apply(scale);
+        for (int scale = fromScale; scale <= toScale; ++scale) {
+            final ScaledExpIndexer indexer = indexerMaker.apply(scale);
+            final long indexesPerPowerOf2 = scale >= 0 ? (1L << scale) : 0;
 
             // Test bucket start at 1 and 2
             assertEquals(1, indexer.getBucketStart(0), 0);
-            assertEquals(2, ScaledExpIndexer.getBucketStart(scale, 1L << scale), 0);
+            if (scale >= 0) {
+                assertEquals(2, indexer.getBucketStart(indexesPerPowerOf2), 0);
+            }
 
             // Test bucket -1 and 0.
             assertEquals(-1, indexer.getBucketIndex(Math.nextDown(1D)));
             assertEquals(0, indexer.getBucketIndex(1D));
 
-            // Test round trip
-            for (int index = 1; index < 10; index++) {
-                assertLongEquals(index, indexer.getBucketIndex(ScaledExpIndexer.getBucketStart(scale, index)), roundTripIndexDelta);
-            }
+            // Test min and max.
+            final long maxIndex = ScaledExpIndexer.getMaxIndex(scale);
+            final long minIndex = ScaledExpIndexer.getMinIndexNormal(scale);
 
-            // Test round trip at higher index interval.
-            for (int index = 1; index < 1000; index += 100) {
-                assertLongEquals(index, indexer.getBucketIndex(ScaledExpIndexer.getBucketStart(scale, index)), roundTripIndexDelta);
-            }
+            assertLongEquals(maxIndex, indexer.getBucketIndex(Double.MAX_VALUE), powerOf2IndexDelta); // LogIndexer needs this delta
+            assertLongEquals(minIndex, indexer.getBucketIndex(Double.MIN_NORMAL), 0);
+
+            assertLongEquals(maxIndex, indexer.getBucketIndex(indexer.getBucketStart(maxIndex)), roundTripIndexDelta);
+            assertLongEquals(minIndex, indexer.getBucketIndex(indexer.getBucketStart(minIndex)), roundTripIndexDelta);
 
             // Test power of 2
-            for (int exponent = -10; exponent <= 10; ++exponent) {
+            for (int exponent = fromExponent; exponent <= toExponent; ++exponent) {
                 final double value = Math.scalb(1D, exponent);
-                long expectedIndex = (1L << scale) * exponent;
+                final long expectedIndex = scale >= 0 ? indexesPerPowerOf2 * exponent : exponent >> (-scale);
+
                 assertLongEquals(expectedIndex, indexer.getBucketIndex(value), powerOf2IndexDelta);
-                assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(Math.nextDown(value)), powerOf2IndexDelta);
+
+                if (scale > 0) {
+                    // Test one bucket down
+                    assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(Math.nextDown(value)), powerOf2IndexDelta);
+                    assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(indexer.getBucketStart(expectedIndex - 1)), roundTripIndexDelta);
+
+                    // Sample 10 indexes in a cycle
+                    for (long index = expectedIndex;
+                         index < expectedIndex + indexesPerPowerOf2;
+                         index += Math.max(1, indexesPerPowerOf2 / 10)) {
+                        assertLongEquals(index, indexer.getBucketIndex(indexer.getBucketStart(index)), roundTripIndexDelta);
+                    }
+                }
             }
         }
     }

@@ -23,8 +23,10 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
     // Any inaccuracy in base will be magnified when computing value to index or index to value mapping.
     // Therefore we should avoid using base as intermediate result.
     //
-    public static double getBucketStart(final int scale, final long index) {
-        // bucketStart = base ^ index
+    // LIMITATION: "index" must not have more than 52 significant bits,
+    //             because this function converts it to double for computation.
+    public static double scaledBasePower(final int scale, final long index) {
+        // result = base ^ index
         // = (2^(2^-scale))^index
         // = 2^(2^-scale * index)
         // = 2^(index * 2^-scale))
@@ -60,11 +62,6 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
 
     public long getMinIndexNormal() {
         return getMinIndexNormal(scale);
-    }
-
-    @Override
-    public double getBucketStart(final long index) {
-        return getBucketStart(scale, index);
     }
 
     @Override

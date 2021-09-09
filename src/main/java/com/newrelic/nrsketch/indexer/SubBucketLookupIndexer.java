@@ -7,6 +7,9 @@ package com.newrelic.nrsketch.indexer;
 import com.newrelic.nrsketch.DoubleFormat;
 
 // Convert linear subbuckets to log subbuckets via lookup tables.
+// This indexer is fast because it uses simple integer operations for mapping,
+// but it costs more space because of the lookup tables.
+
 public class SubBucketLookupIndexer extends SubBucketIndexer {
     // This indexer runs more efficiently up to this scale.
     // To do: use static arrays for scales up to this level.
@@ -70,7 +73,7 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
         final int nSubBuckets = 1 << scale;
         final long[] bounds = new long[nSubBuckets];
         for (int i = 0; i < nSubBuckets; i++) {
-            bounds[i] = DoubleFormat.getMantissa(getBucketStart(scale, i) );
+            bounds[i] = DoubleFormat.getMantissa(scaledBasePower(scale, i) );
         }
         return bounds;
     }

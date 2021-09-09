@@ -4,7 +4,12 @@
 
 package com.newrelic.nrsketch.indexer;
 
-// Use Math.log(). This is the canonical exponential indexer
+// Use Math.log(). This is the canonical exponential indexer.
+// However, due to floating point computational errors, it is only good from scale -10 to 43.
+// See BucketIndexerTest.testLogIndexerScales()
+// In contrast, SubBucketLogIndexer can be used for scales up to 52 (max meaningful scale for double),
+// because it limits floating point computation in the small range of 1 to 2.
+
 public class LogIndexer extends ScaledExpIndexer {
     // See also ScaledExpIndexer.getBucketStart() on avoiding using base as intermediate result.
     // index = log(value) / log(base)
@@ -25,5 +30,10 @@ public class LogIndexer extends ScaledExpIndexer {
         // Use floor() to round toward -Infinity. Plain "(long)" rounds toward 0.
         // Example: (long) -1.5 = -1; floor(-1.5) = -2
         return (long) Math.floor(Math.log(value) * scaleFactor);
+    }
+
+    @Override
+    public double getBucketStart(final long index) {
+        return scaledBasePower(scale, index);
     }
 }

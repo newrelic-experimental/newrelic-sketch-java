@@ -262,6 +262,8 @@ public class BucketIndexerTest {
                             final long roundTripIndexDelta,
                             final long powerOf2IndexDelta
     ) {
+        final double squareRootOf2 = Math.pow(2, .5);
+
         for (int scale = fromScale; scale <= toScale; ++scale) {
             final ScaledExpIndexer indexer = indexerMaker.apply(scale);
             final long indexesPerPowerOf2 = scale >= 0 ? (1L << scale) : 0;
@@ -297,6 +299,9 @@ public class BucketIndexerTest {
                     // Test one bucket down
                     assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(Math.nextDown(value)), powerOf2IndexDelta);
                     assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(indexer.getBucketStart(expectedIndex - 1)), roundTripIndexDelta);
+
+                    // Test middle of bucket
+                    assertLongEquals(expectedIndex + indexesPerPowerOf2 / 2, indexer.getBucketIndex(value * squareRootOf2), powerOf2IndexDelta);
 
                     // Sample 10 indexes in a cycle
                     for (long index = expectedIndex;

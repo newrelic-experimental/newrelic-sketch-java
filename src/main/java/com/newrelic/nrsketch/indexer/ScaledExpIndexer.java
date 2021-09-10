@@ -19,8 +19,8 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
 
     // When scale is high, base is very close to 1, in the binary form like 1.000000XXXX,
     // where there are many leading zero bits before the non-zero portion of XXXX.
-    // The effective significant bits on the base's mantissa is greatly reduced in this case.
-    // Any inaccuracy in base will be magnified when computing value to index or index to value mapping.
+    // At scale N, only about 52 - N significant bits are left, resulting in large errors as N approaches 52.
+    // Any inaccuracy in base is then magnified when computing value to index or index to value mapping.
     // Therefore we should avoid using base as intermediate result.
     //
     // LIMITATION: "index" must not have more than 52 significant bits,

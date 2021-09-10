@@ -6,6 +6,7 @@ package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.ExponentIndexer;
+import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.LogIndexer;
 import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import com.newrelic.nrsketch.indexer.SubBucketLogIndexer;
@@ -15,36 +16,31 @@ import org.junit.Test;
 import java.util.Iterator;
 
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
-import static com.newrelic.nrsketch.indexer.BucketIndexerTest.DELTA;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertDoubleEquals;
+import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertLongEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SimpleNrSketchTest {
+    public static final int TEST_INIT_SCALE = 12;
+    public static final double DELTA = 1e-14; // Floating point comparison relative delta.
     public static final double ERROR_DELTA = 1.001; // for relative error comparison.
     public static final double SCALE4_ERROR = 0.02165746232622625;
 
     @Test
-    public void testIndexOptions() {
-        assertTrue(SimpleNrSketch.IndexerOption.LOG_INDEXER.getIndexer(8) instanceof LogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOG_INDEXER.getIndexer(0) instanceof LogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOG_INDEXER.getIndexer(-2) instanceof LogIndexer);
+    public void testConstructors() {
+        SimpleNrSketch sketch = new SimpleNrSketch();
+        assertEquals(SimpleNrSketch.DEFAULT_MAX_BUCKETS, sketch.getMaxNumOfBuckets());
+        assertEquals(SimpleNrSketch.DEFAULT_INIT_SCALE, sketch.getScale());
 
-        assertTrue(SimpleNrSketch.IndexerOption.LOOKUP_INDEXER.getIndexer(8) instanceof SubBucketLookupIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOOKUP_INDEXER.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOOKUP_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+        sketch = new SimpleNrSketch(99);
+        assertEquals(99, sketch.getMaxNumOfBuckets());
+        assertEquals(SimpleNrSketch.DEFAULT_INIT_SCALE, sketch.getScale());
 
-        assertTrue(SimpleNrSketch.IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(8) instanceof SubBucketLogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
-
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(12) instanceof SubBucketLogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(8) instanceof SubBucketLogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(SubBucketLookupIndexer.PREFERRED_MAX_SCALE) instanceof SubBucketLookupIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(4) instanceof SubBucketLookupIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(-2) instanceof ExponentIndexer);
+        sketch = new SimpleNrSketch(99, 33);
+        assertEquals(99, sketch.getMaxNumOfBuckets());
+        assertEquals(33, sketch.getScale());
     }
 
     // Verify relative error for max/min contrast of 1M, with default number of buckets.
@@ -81,8 +77,8 @@ public class SimpleNrSketchTest {
         final double delta = 1e-12;
         for (int scale = 12; scale >= -3; scale--) {
             for (int scaleDelta = 1; scaleDelta <= 5; scaleDelta++) {
-                final ScaledExpIndexer indexer1 = SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(scale);
-                final ScaledExpIndexer indexer2 = SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
+                final ScaledExpIndexer indexer1 = IndexerOption.AUTO_SELECT.getIndexer(scale);
+                final ScaledExpIndexer indexer2 = IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
 
                 final double base1 = indexer1.getBase();
                 final double base2 = indexer2.getBase();
@@ -229,7 +225,7 @@ public class SimpleNrSketchTest {
             if (Double.isNaN(expectedPercentiles[i])) {
                 assertTrue(Double.isNaN(actualPercentiles[i]));
             } else {
-                assertEquals(expectedPercentiles[i], actualPercentiles[i], 0);
+                assertDoubleEquals(expectedPercentiles[i], actualPercentiles[i], DELTA);
             }
         }
     }
@@ -628,7 +624,7 @@ public class SimpleNrSketchTest {
         verifyHistogram(h1, 3, -10, 100, new Bucket[]{
                 new Bucket(-10.0, 0.0, 1), // bucket 1
                 new Bucket(0.0, 0.0, 1), // bucket 2
-                new Bucket(99.99602407243958, 100.0, 1), // bucket 3
+                new Bucket(99.9960240724642, 100.0, 1), // bucket 3
         });
 
         SimpleNrSketch.merge(h1, h4);
@@ -657,14 +653,14 @@ public class SimpleNrSketchTest {
         h1.insert(50);
         verifyHistogram(h1, 4, -20, 50, new Bucket[]{
                 new Bucket(-20.0, 0.0, 3), // bucket 1
-                new Bucket(49.99801203621979, 50.0, 1), // bucket 2
+                new Bucket(49.9980120362321, 50.0, 1), // bucket 2
         });
 
         h1.insert(0);
         verifyHistogram(h1, 5, -20, 50, new Bucket[]{
                 new Bucket(-20.0, 0.0, 3), // bucket 1
                 new Bucket(0.0, 0.0, 1), // bucket 2
-                new Bucket(49.99801203621979, 50.0, 1), // bucket 3
+                new Bucket(49.9980120362321, 50.0, 1), // bucket 3
         });
     }
 
@@ -725,7 +721,7 @@ public class SimpleNrSketchTest {
 
     @Test
     public void negativeHistogramSmallDataSet() {
-        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10);
+        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10, TEST_INIT_SCALE);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
         verifySerialization(histogram, 1, 0, 82);
         assertEquals(0, histogram.getBucketWindowSize());
@@ -751,7 +747,7 @@ public class SimpleNrSketchTest {
     }
 
     private static SimpleNrSketch testNegativeHistogram(final int numBuckets, final double from, final double to, final int numDataPoints, final Bucket[] expectedBuckets) {
-        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(numBuckets);
+        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(numBuckets, TEST_INIT_SCALE);
         final double max = insertData(histogram, from, to, numDataPoints);
         verifyHistogram(histogram, numDataPoints, from, max, expectedBuckets);
         return histogram;
@@ -809,6 +805,12 @@ public class SimpleNrSketchTest {
         return maxRelativeError;
     }
 
+    public static void assertBucketEquals(final Bucket a, final Bucket b, final double delta) {
+        assertDoubleEquals(a.startValue , b.startValue, delta);
+        assertDoubleEquals(a.endValue , b.endValue, delta);
+        assertLongEquals(a.count , b.count, 0);
+    }
+
     static void verifyHistogram(final NrSketch histogram, final long expectedCount, final double expectedMin, final double expectedMax, final Bucket[] expectedBuckets) {
         dumpBuckets(histogram);
 
@@ -818,7 +820,7 @@ public class SimpleNrSketchTest {
 
         while (iterator.hasNext()) {
             final Bucket bucket = iterator.next();
-            assertEquals(expectedBuckets[index], bucket);
+            assertBucketEquals(expectedBuckets[index], bucket, DELTA);
             index++;
             countSum += bucket.count;
         }

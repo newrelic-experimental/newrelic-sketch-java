@@ -7,24 +7,25 @@ package com.newrelic.nrsketch.indexer;
 import com.newrelic.nrsketch.DoubleFormat;
 
 // Calls Math.log() to map a number into a subbucket.
+// SubBucketLogIndexer has higher precision than plain LogIndexer because it limits floating point computation
+// in the small range of 1 to 2. It can be used for scales up to 52 (max meaningful scale for double).
+
 public class SubBucketLogIndexer extends SubBucketIndexer {
-    final double base;
-    final double baseLog;
+    final double scaleFactor; // See LogIndexer.
 
     public SubBucketLogIndexer(final int scale) {
         super(scale);
-        base = LogIndexer.getBase(scale);
-        baseLog = Math.log(base);
+        scaleFactor = Math.scalb(1 / Math.log(2), scale);
     }
 
     @Override
     long getSubBucketIndex(final long mantissa) {
         final double value = DoubleFormat.makeDouble1To2(mantissa);
-        return (long) (Math.log(value) / baseLog);
+        return (long) (Math.log(value) * scaleFactor);
     }
 
     @Override
     long getSubBucketStartMantissa(final long subBucketIndex) {
-        return DoubleFormat.getMantissa(Math.pow(base, subBucketIndex)); // base^index. Entry 0 is always 1
+        return DoubleFormat.getMantissa(scaledBasePower(scale, subBucketIndex));
     }
 }

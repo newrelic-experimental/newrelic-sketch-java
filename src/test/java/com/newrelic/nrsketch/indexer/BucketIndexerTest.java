@@ -7,6 +7,8 @@ package com.newrelic.nrsketch.indexer;
 import com.newrelic.nrsketch.DoubleFormat;
 import org.junit.Test;
 
+import java.util.function.Function;
+
 import static com.newrelic.nrsketch.indexer.SubBucketLookupIndexer.binarySearch;
 import static com.newrelic.nrsketch.indexer.SubBucketLookupIndexer.getLogBoundMantissas;
 import static org.junit.Assert.assertEquals;
@@ -14,8 +16,30 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class BucketIndexerTest {
-    public static final double DELTA = 1e-13; // Floating point comparison relative delta.
-    public static final double FUDGE = 1 + 1e-11; // When value is on or near a bound, apply the fudge factor to make it fall on the expected side a bound for all indexers.
+    public static final double DELTA = 1e-14; // Floating point comparison relative delta.
+    public static final double FUDGE = 1 + 1e-13; // When value is on or near a bound, apply the fudge factor to make it fall on the expected side a bound for all indexers.
+
+    @Test
+    public void testIndexerOptions() {
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(8) instanceof LogIndexer);
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(0) instanceof LogIndexer);
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(-2) instanceof LogIndexer);
+
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(8) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(8) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(12) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(8) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(SubBucketLookupIndexer.PREFERRED_MAX_SCALE) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(4) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(-2) instanceof ExponentIndexer);
+    }
 
     @Test
     public void testGetBase() {
@@ -54,8 +78,9 @@ public class BucketIndexerTest {
 
     @Test
     public void testLogBounds() {
-        final int nSubBuckets = 16;
-        final long[] logBounds = getLogBoundMantissas(nSubBuckets);
+        final int scale = 4;
+        final int nSubBuckets = 1 << scale;
+        final long[] logBounds = getLogBoundMantissas(scale);
         double base = 0;
         for (int i = 0; i < logBounds.length; i++) {
             final double d = DoubleFormat.makeDouble1To2(logBounds[i]);
@@ -96,21 +121,22 @@ public class BucketIndexerTest {
 
     @Test
     public void testSubBucketLogIndexer() {
-        for (int scale = 1; scale <= 5; scale++) {
+        for (int scale = 1; scale <= 10; scale++) {
             compareIndexers(new LogIndexer(scale), new SubBucketLogIndexer(scale));
         }
     }
 
     @Test
     public void testSubBucketLookupIndexer() {
-        for (int scale = 1; scale <= 5; scale++) {
+        for (int scale = 1; scale <= 10; scale++) {
             compareIndexers(new LogIndexer(scale), new SubBucketLookupIndexer(scale));
         }
     }
 
     @Test
     public void testExponentIndexer() {
-        for (int scale = 0; scale >= -5; scale--) {
+        // Scales below -8 will cause number overflow in testSelectedValues() because of very large base.
+        for (int scale = 0; scale >= -8; scale--) {
             compareIndexers(new LogIndexer(scale), new ExponentIndexer(scale));
         }
     }
@@ -187,12 +213,126 @@ public class BucketIndexerTest {
     }
 
     @Test
-    public void testLookupIndexerScale() {
-        for (int scale = 1; scale <= 20; scale++) {
-            final SubBucketIndexer logLookupIndexer = new SubBucketLookupIndexer(scale);
-            assertEquals(0, logLookupIndexer.getSubBucketIndex(0));
-            assertEquals(0, logLookupIndexer.getSubBucketIndex(1));
-            assertEquals((1 << scale) - 1, logLookupIndexer.getSubBucketIndex(DoubleFormat.MANTISSA_MASK));
+    public void testLogIndexerScales() {
+        // Limit to scale 43, because LogIndexer.getBucketStart() calls scaledPower(), which cannot handle
+        // more than 52 significant bits on index, and index needs about 10 bits for input exponent.
+        // This leaves 43 bits to resolve the input mantissa part.
+
+        testScales(LogIndexer::new,
+                1, // fromScale
+                43, // toScale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                1, // roundTripIndexDelta
+                2); // powerOf2IndexDelta
+
+        testScales(LogIndexer::new,
+                1, // fromScale
+                43, // toScale
+                -500, // fromExponent, higher exponent needs higher powerOf2IndexDelta
+                500, // toExponent
+                1, // roundTripIndexDelta
+                1); // powerOf2IndexDelta
+
+        testScales(LogIndexer::new,
+                -10, // fromScale. LogIndexer gives wrong result at scale -11 at Double.MIN end, likely because of float point overflow or underflow.
+                0, // toScale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                1, // roundTripIndexDelta
+                1); // powerOf2IndexDelta
+    }
+
+    @Test
+    public void testSubBucketLogIndexerScales() {
+        testScales(SubBucketLogIndexer::new,
+                1, // fromScale
+                52, // toScale, highest possible scale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                1, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
+    }
+
+    @Test
+    public void testSubBucketLookupIndexerScales() {
+        testScales(SubBucketLookupIndexer::new,
+                1, // fromScale
+                20, // toScale. Scales above 20 would use too much memory
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                0, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
+    }
+
+    @Test
+    public void testExponentIndexerScales() {
+        testScales(ExponentIndexer::new,
+                -11, // fromScale, lowest possible scale
+                0, // toScale
+                Double.MIN_EXPONENT, // fromExponent
+                Double.MAX_EXPONENT, // toExponent
+                0, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
+    }
+
+    private void testScales(final Function<Integer, ScaledExpIndexer> indexerMaker,
+                            final int fromScale,
+                            final int toScale,
+                            final int fromExponent,
+                            final int toExponent,
+                            final long roundTripIndexDelta,
+                            final long powerOf2IndexDelta
+    ) {
+        final double squareRootOf2 = Math.pow(2, .5);
+
+        for (int scale = fromScale; scale <= toScale; ++scale) {
+            final ScaledExpIndexer indexer = indexerMaker.apply(scale);
+            final long indexesPerPowerOf2 = scale >= 0 ? (1L << scale) : 0;
+
+            // Test bucket start at 1 and 2
+            assertEquals(1, indexer.getBucketStart(0), 0);
+            if (scale >= 0) {
+                assertEquals(2, indexer.getBucketStart(indexesPerPowerOf2), 0);
+            }
+
+            // Test bucket -1 and 0.
+            assertEquals(-1, indexer.getBucketIndex(Math.nextDown(1D)));
+            assertEquals(0, indexer.getBucketIndex(1D));
+
+            // Test min and max.
+            final long maxIndex = ScaledExpIndexer.getMaxIndex(scale);
+            final long minIndex = ScaledExpIndexer.getMinIndexNormal(scale);
+
+            assertLongEquals(maxIndex, indexer.getBucketIndex(Double.MAX_VALUE), powerOf2IndexDelta); // LogIndexer needs this delta
+            assertLongEquals(minIndex, indexer.getBucketIndex(Double.MIN_NORMAL), 0);
+
+            assertLongEquals(maxIndex, indexer.getBucketIndex(indexer.getBucketStart(maxIndex)), roundTripIndexDelta);
+            assertLongEquals(minIndex, indexer.getBucketIndex(indexer.getBucketStart(minIndex)), roundTripIndexDelta);
+
+            // Test power of 2
+            for (int exponent = fromExponent; exponent <= toExponent; ++exponent) {
+                final double value = Math.scalb(1D, exponent);
+                final long expectedIndex = scale >= 0 ? indexesPerPowerOf2 * exponent : exponent >> (-scale);
+
+                assertLongEquals(expectedIndex, indexer.getBucketIndex(value), powerOf2IndexDelta);
+
+                if (scale > 0) {
+                    // Test one bucket down
+                    assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(Math.nextDown(value)), powerOf2IndexDelta);
+                    assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(indexer.getBucketStart(expectedIndex - 1)), roundTripIndexDelta);
+
+                    // Test middle of bucket
+                    assertLongEquals(expectedIndex + indexesPerPowerOf2 / 2, indexer.getBucketIndex(value * squareRootOf2), powerOf2IndexDelta);
+
+                    // Sample 10 indexes in a cycle
+                    for (long index = expectedIndex;
+                         index < expectedIndex + indexesPerPowerOf2;
+                         index += Math.max(1, indexesPerPowerOf2 / 10)) {
+                        assertLongEquals(index, indexer.getBucketIndex(indexer.getBucketStart(index)), roundTripIndexDelta);
+                    }
+                }
+            }
         }
     }
 }

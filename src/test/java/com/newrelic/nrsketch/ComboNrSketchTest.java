@@ -7,6 +7,8 @@ package com.newrelic.nrsketch;
 import com.newrelic.nrsketch.NrSketch.Bucket;
 import org.junit.Test;
 
+import java.util.List;
+
 import static com.newrelic.nrsketch.SimpleNrSketchTest.EMPTY_BUCKET_LIST;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.INITIAL_ERROR;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE4_ERROR;
@@ -19,6 +21,32 @@ public class ComboNrSketchTest {
     private static final double SCALE2_ERROR = 0.08642723372588978;
     private static final double SCALE1_ERROR = 0.17157287525380996;
     private static final double SCALE0_ERROR = 1.0 / 3;
+
+    @Test
+    public void testConstructors() {
+        ComboNrSketch sketch = new ComboNrSketch();
+        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE);
+
+        sketch = new ComboNrSketch(99);
+        assertParams(sketch, 99, SimpleNrSketch.DEFAULT_INIT_SCALE);
+
+        sketch = new ComboNrSketch(99, 33);
+        assertParams(sketch, 99, 33);
+    }
+
+    private void assertParams(final ComboNrSketch sketch, final int expectedNumBucketsPerHistogram, final int expectedInitScale) {
+        sketch.insert(10);
+        sketch.insert(-20);
+
+        final List<NrSketch> sketches = sketch.getHistograms();
+        assertEquals(2, sketches.size());
+
+        assertEquals(expectedNumBucketsPerHistogram, sketches.get(0).getMaxNumOfBuckets());
+        assertEquals(expectedInitScale, ((SimpleNrSketch)sketches.get(0)).getScale());
+
+        assertEquals(expectedNumBucketsPerHistogram, sketches.get(1).getMaxNumOfBuckets());
+        assertEquals(expectedInitScale, ((SimpleNrSketch)sketches.get(1)).getScale());
+    }
 
     @Test
     public void happyPath() {

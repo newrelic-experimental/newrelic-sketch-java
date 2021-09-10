@@ -17,6 +17,22 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
         return Math.pow(2, Math.pow(2, -scale));
     }
 
+    // When scale is high, base is very close to 1, in the binary form like 1.000000XXXX,
+    // where there are many leading zero bits before the non-zero portion of XXXX.
+    // At scale N, only about 52 - N significant bits are left, resulting in large errors as N approaches 52.
+    // Any inaccuracy in base is then magnified when computing value to index or index to value mapping.
+    // Therefore we should avoid using base as intermediate result.
+    //
+    // LIMITATION: "index" must not have more than 52 significant bits,
+    //             because this function converts it to double for computation.
+    public static double scaledBasePower(final int scale, final long index) {
+        // result = base ^ index
+        // = (2^(2^-scale))^index
+        // = 2^(2^-scale * index)
+        // = 2^(index * 2^-scale))
+        return Math.pow(2, Math.scalb((double) index, -scale));
+    }
+
     public static long getMaxIndex(final int scale) {
         // Scale > 0: max exponent followed by max subbucket index.
         // Scale <= 0: max exponent with -scale bits truncated.

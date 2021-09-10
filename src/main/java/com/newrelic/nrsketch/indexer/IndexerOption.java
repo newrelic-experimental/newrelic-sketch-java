@@ -1,3 +1,7 @@
+// Copyright 2021 New Relic Corporation. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// This file is part of the NrSketch project.
+
 package com.newrelic.nrsketch.indexer;
 
 public enum IndexerOption {

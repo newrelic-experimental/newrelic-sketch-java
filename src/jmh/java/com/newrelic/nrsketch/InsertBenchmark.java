@@ -4,6 +4,7 @@
 
 package com.newrelic.nrsketch;
 
+import com.newrelic.nrsketch.indexer.IndexerOption;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Mode;
@@ -64,15 +65,15 @@ public class InsertBenchmark {
                 break;
             case SIMPLE_LOG:
                 sketch = new SimpleNrSketch(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true,
-                        SimpleNrSketch.IndexerOption.LOG_INDEXER);
+                        IndexerOption.LOG_INDEXER::getIndexer);
                 break;
             case SIMPLE_LOOKUP:
                 sketch = new SimpleNrSketch(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true,
-                        SimpleNrSketch.IndexerOption.LOOKUP_INDEXER);
+                        IndexerOption.SUB_BUCKET_LOOKUP_INDEXER::getIndexer);
                 break;
             case SIMPLE_SUB_BUCKET_LOG:
                 sketch = new SimpleNrSketch(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true,
-                        SimpleNrSketch.IndexerOption.SUB_BUCKET_LOG_INDEXER);
+                        IndexerOption.SUB_BUCKET_LOG_INDEXER::getIndexer);
                 break;
             case COMBO:
                 sketch = new ComboNrSketch();

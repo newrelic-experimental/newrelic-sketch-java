@@ -6,6 +6,7 @@ package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.ExponentIndexer;
+import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.LogIndexer;
 import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import com.newrelic.nrsketch.indexer.SubBucketLogIndexer;
@@ -15,7 +16,6 @@ import org.junit.Test;
 import java.util.Iterator;
 
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
-import static com.newrelic.nrsketch.indexer.BucketIndexerTest.DELTA;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertDoubleEquals;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertLongEquals;
 import static org.junit.Assert.assertEquals;
@@ -29,24 +29,24 @@ public class SimpleNrSketchTest {
 
     @Test
     public void testIndexOptions() {
-        assertTrue(SimpleNrSketch.IndexerOption.LOG_INDEXER.getIndexer(8) instanceof LogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOG_INDEXER.getIndexer(0) instanceof LogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOG_INDEXER.getIndexer(-2) instanceof LogIndexer);
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(8) instanceof LogIndexer);
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(0) instanceof LogIndexer);
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(-2) instanceof LogIndexer);
 
-        assertTrue(SimpleNrSketch.IndexerOption.LOOKUP_INDEXER.getIndexer(8) instanceof SubBucketLookupIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOOKUP_INDEXER.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.LOOKUP_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(8) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
 
-        assertTrue(SimpleNrSketch.IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(8) instanceof SubBucketLogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(8) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
 
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(12) instanceof SubBucketLogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(8) instanceof SubBucketLogIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(SubBucketLookupIndexer.PREFERRED_MAX_SCALE) instanceof SubBucketLookupIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(4) instanceof SubBucketLookupIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(-2) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(12) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(8) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(SubBucketLookupIndexer.PREFERRED_MAX_SCALE) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(4) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(-2) instanceof ExponentIndexer);
     }
 
     // Verify relative error for max/min contrast of 1M, with default number of buckets.
@@ -83,8 +83,8 @@ public class SimpleNrSketchTest {
         final double delta = 1e-12;
         for (int scale = 12; scale >= -3; scale--) {
             for (int scaleDelta = 1; scaleDelta <= 5; scaleDelta++) {
-                final ScaledExpIndexer indexer1 = SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(scale);
-                final ScaledExpIndexer indexer2 = SimpleNrSketch.IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
+                final ScaledExpIndexer indexer1 = IndexerOption.AUTO_SELECT.getIndexer(scale);
+                final ScaledExpIndexer indexer2 = IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
 
                 final double base1 = indexer1.getBase();
                 final double base2 = indexer2.getBase();

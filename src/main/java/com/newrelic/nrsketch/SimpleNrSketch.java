@@ -4,15 +4,13 @@
 
 package com.newrelic.nrsketch;
 
-import com.newrelic.nrsketch.indexer.ExponentIndexer;
-import com.newrelic.nrsketch.indexer.LogIndexer;
+import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
-import com.newrelic.nrsketch.indexer.SubBucketLogIndexer;
-import com.newrelic.nrsketch.indexer.SubBucketLookupIndexer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 
 // The bucketHoldsPositiveNumbers flag controls whether positive or negative numbers go to the bucket array.
 // It controls which kind of numbers are favored. The kind going into the bucket array will have high
@@ -23,12 +21,12 @@ public class SimpleNrSketch implements NrSketch {
     public static final int DEFAULT_MAX_BUCKETS = 320; // 2.17% relative error (scale 4) for max/min contrast up to 1M
     public static final int DEFAULT_INIT_SCALE = 12; // .0085% relative error
 
-    public static final IndexerOption DEFAULT_INDEXER = IndexerOption.AUTO_SELECT;
+    public static final Function<Integer, ScaledExpIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT::getIndexer;
 
     private WindowedCounterArray buckets;
     private final boolean bucketHoldsPositiveNumbers;
     private ScaledExpIndexer indexer;
-    private final IndexerOption indexerOption;
+    private final Function<Integer, ScaledExpIndexer> indexerMaker;
 
     private long totalCount;
     private long countForNegatives;
@@ -37,36 +35,6 @@ public class SimpleNrSketch implements NrSketch {
     private double min = Double.NaN;
     private double max = Double.NaN;
     private double sum = 0;
-
-    public enum IndexerOption {
-        LOG_INDEXER,
-        LOOKUP_INDEXER,
-        SUB_BUCKET_LOG_INDEXER,
-        AUTO_SELECT;
-
-        public ScaledExpIndexer getIndexer(final int myScale) {
-            switch (this) {
-                case LOG_INDEXER:
-                    return new LogIndexer(myScale);
-                case LOOKUP_INDEXER:
-                    return myScale > 0 ? new SubBucketLookupIndexer(myScale) : new ExponentIndexer(myScale);
-                case SUB_BUCKET_LOG_INDEXER:
-                    return myScale > 0 ? new SubBucketLogIndexer(myScale) : new ExponentIndexer(myScale);
-                case AUTO_SELECT:
-                    // At higher scales, use SubBucketLogIndexer instead of LogIndexer, for more consistency with
-                    // SubBucketLookupIndexer. And it is slightly faster then LogIndexer.
-                    return myScale > SubBucketLookupIndexer.PREFERRED_MAX_SCALE ? new SubBucketLogIndexer(myScale)
-                            : (myScale > 0 ? new SubBucketLookupIndexer(myScale) : new ExponentIndexer(myScale));
-                default:
-                    throw new IllegalArgumentException("Unknown option " + this);
-            }
-        }
-    }
-
-    // A subclass may override this method for customization.
-    protected ScaledExpIndexer getIndexer(final int myScale) {
-        return indexerOption.getIndexer(myScale);
-    }
 
     @Override
     public boolean equals(final Object obj) {
@@ -120,23 +88,23 @@ public class SimpleNrSketch implements NrSketch {
     }
 
     public SimpleNrSketch() {
-        this(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true, DEFAULT_INDEXER);
+        this(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true, DEFAULT_INDEXER_MAKER);
     }
 
     public SimpleNrSketch(final int maxNumBuckets) {
-        this(maxNumBuckets, DEFAULT_INIT_SCALE, true, DEFAULT_INDEXER);
+        this(maxNumBuckets, DEFAULT_INIT_SCALE, true, DEFAULT_INDEXER_MAKER);
     }
 
     public static SimpleNrSketch newNegativeHistogram(final int maxNumBuckets) {
-        return new SimpleNrSketch(maxNumBuckets, DEFAULT_INIT_SCALE, false, DEFAULT_INDEXER);
+        return new SimpleNrSketch(maxNumBuckets, DEFAULT_INIT_SCALE, false, DEFAULT_INDEXER_MAKER);
     }
 
     public SimpleNrSketch(final int maxNumBuckets, final int initialScale,
-                          final boolean bucketHoldsPositiveNumbers, final IndexerOption indexerOption) {
+                          final boolean bucketHoldsPositiveNumbers, final Function<Integer, ScaledExpIndexer> indexerMaker) {
         buckets = new WindowedCounterArray(maxNumBuckets);
         this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
-        this.indexerOption = indexerOption;
-        this.indexer = getIndexer(initialScale);
+        this.indexerMaker = indexerMaker;
+        this.indexer = indexerMaker.apply(initialScale);
     }
 
     private long valueToIndex(final double value) {
@@ -247,7 +215,7 @@ public class SimpleNrSketch implements NrSketch {
             }
             buckets = newBuckets;
         }
-        indexer = getIndexer(getScale() - scaleReduction);
+        indexer = indexerMaker.apply(getScale() - scaleReduction);
     }
 
     @Override

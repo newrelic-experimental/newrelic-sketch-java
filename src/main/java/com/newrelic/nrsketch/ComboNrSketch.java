@@ -6,6 +6,7 @@ package com.newrelic.nrsketch;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -18,6 +19,7 @@ import java.util.function.Function;
 
 public class ComboNrSketch implements NrSketch {
     private final int maxNumBucketsPerHistogram;
+    private final int initialScale;
 
     // Holds negative and/or positive histograms. When both are present, negative one always precedes positive one.
     private final List<NrSketch> histograms;
@@ -32,7 +34,12 @@ public class ComboNrSketch implements NrSketch {
     }
 
     public ComboNrSketch(final int maxNumBucketsPerHistogram) {
+        this(maxNumBucketsPerHistogram, SimpleNrSketch.DEFAULT_INIT_SCALE);
+    }
+
+    public ComboNrSketch(final int maxNumBucketsPerHistogram, final int initialScale) {
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
+        this.initialScale = initialScale;
         histograms = new ArrayList<>(2);
     }
 
@@ -46,7 +53,7 @@ public class ComboNrSketch implements NrSketch {
 
     private NrSketch getOrCreatePositveHistogram() {
         if (positiveHistogram == null) {
-            setPositiveHistogram(new SimpleNrSketch(maxNumBucketsPerHistogram));
+            setPositiveHistogram(new SimpleNrSketch(maxNumBucketsPerHistogram, initialScale));
         }
         return positiveHistogram;
     }
@@ -61,7 +68,7 @@ public class ComboNrSketch implements NrSketch {
 
     private NrSketch getOrCreateNegativeHistogram() {
         if (negativeHistogram == null) {
-            setNegativeHistogram(SimpleNrSketch.newNegativeHistogram(maxNumBucketsPerHistogram));
+            setNegativeHistogram(SimpleNrSketch.newNegativeHistogram(maxNumBucketsPerHistogram, initialScale));
         }
         return negativeHistogram;
     }
@@ -222,5 +229,10 @@ public class ComboNrSketch implements NrSketch {
     @Override
     public Iterator<Bucket> iterator() {
         return new ComboIterator();
+    }
+
+    @TestOnly
+    List<NrSketch> getHistograms() {
+        return histograms;
     }
 }

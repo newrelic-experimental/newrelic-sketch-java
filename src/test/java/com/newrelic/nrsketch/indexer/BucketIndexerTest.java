@@ -20,6 +20,28 @@ public class BucketIndexerTest {
     public static final double FUDGE = 1 + 1e-13; // When value is on or near a bound, apply the fudge factor to make it fall on the expected side a bound for all indexers.
 
     @Test
+    public void testIndexerOptions() {
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(8) instanceof LogIndexer);
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(0) instanceof LogIndexer);
+        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(-2) instanceof LogIndexer);
+
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(8) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(8) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(12) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(8) instanceof SubBucketLogIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(SubBucketLookupIndexer.PREFERRED_MAX_SCALE) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(4) instanceof SubBucketLookupIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(0) instanceof ExponentIndexer);
+        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(-2) instanceof ExponentIndexer);
+    }
+
+    @Test
     public void testGetBase() {
         assertEquals(1.0442737824274138, ScaledExpIndexer.getBase(4), 0);
         assertEquals(1.0905077326652577, ScaledExpIndexer.getBase(3), 0);

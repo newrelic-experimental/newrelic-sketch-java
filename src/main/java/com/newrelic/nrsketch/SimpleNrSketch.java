@@ -88,15 +88,19 @@ public class SimpleNrSketch implements NrSketch {
     }
 
     public SimpleNrSketch() {
-        this(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true, DEFAULT_INDEXER_MAKER);
+        this(DEFAULT_MAX_BUCKETS);
     }
 
     public SimpleNrSketch(final int maxNumBuckets) {
-        this(maxNumBuckets, DEFAULT_INIT_SCALE, true, DEFAULT_INDEXER_MAKER);
+        this(maxNumBuckets, DEFAULT_INIT_SCALE);
     }
 
-    public static SimpleNrSketch newNegativeHistogram(final int maxNumBuckets) {
-        return new SimpleNrSketch(maxNumBuckets, DEFAULT_INIT_SCALE, false, DEFAULT_INDEXER_MAKER);
+    public SimpleNrSketch(final int maxNumBuckets, final int initialScale) {
+        this(maxNumBuckets, initialScale, true, DEFAULT_INDEXER_MAKER);
+    }
+
+    public static SimpleNrSketch newNegativeHistogram(final int maxNumBuckets, final int initialScale) {
+        return new SimpleNrSketch(maxNumBuckets, initialScale, false, DEFAULT_INDEXER_MAKER);
     }
 
     public SimpleNrSketch(final int maxNumBuckets, final int initialScale,

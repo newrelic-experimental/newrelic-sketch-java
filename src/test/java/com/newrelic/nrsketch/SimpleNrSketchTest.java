@@ -23,30 +23,24 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SimpleNrSketchTest {
+    public static final int TEST_INIT_SCALE = 12;
     public static final double DELTA = 1e-14; // Floating point comparison relative delta.
     public static final double ERROR_DELTA = 1.001; // for relative error comparison.
     public static final double SCALE4_ERROR = 0.02165746232622625;
 
     @Test
-    public void testIndexOptions() {
-        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(8) instanceof LogIndexer);
-        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(0) instanceof LogIndexer);
-        assertTrue(IndexerOption.LOG_INDEXER.getIndexer(-2) instanceof LogIndexer);
+    public void testConstructors() {
+        SimpleNrSketch sketch = new SimpleNrSketch();
+        assertEquals(SimpleNrSketch.DEFAULT_MAX_BUCKETS, sketch.getMaxNumOfBuckets());
+        assertEquals(SimpleNrSketch.DEFAULT_INIT_SCALE, sketch.getScale());
 
-        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(8) instanceof SubBucketLookupIndexer);
-        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(IndexerOption.SUB_BUCKET_LOOKUP_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
+        sketch = new SimpleNrSketch(99);
+        assertEquals(99, sketch.getMaxNumOfBuckets());
+        assertEquals(SimpleNrSketch.DEFAULT_INIT_SCALE, sketch.getScale());
 
-        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(8) instanceof SubBucketLogIndexer);
-        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(IndexerOption.SUB_BUCKET_LOG_INDEXER.getIndexer(-2) instanceof ExponentIndexer);
-
-        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(12) instanceof SubBucketLogIndexer);
-        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(8) instanceof SubBucketLogIndexer);
-        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(SubBucketLookupIndexer.PREFERRED_MAX_SCALE) instanceof SubBucketLookupIndexer);
-        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(4) instanceof SubBucketLookupIndexer);
-        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(0) instanceof ExponentIndexer);
-        assertTrue(IndexerOption.AUTO_SELECT.getIndexer(-2) instanceof ExponentIndexer);
+        sketch = new SimpleNrSketch(99, 33);
+        assertEquals(99, sketch.getMaxNumOfBuckets());
+        assertEquals(33, sketch.getScale());
     }
 
     // Verify relative error for max/min contrast of 1M, with default number of buckets.
@@ -727,7 +721,7 @@ public class SimpleNrSketchTest {
 
     @Test
     public void negativeHistogramSmallDataSet() {
-        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10);
+        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10, TEST_INIT_SCALE);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
         verifySerialization(histogram, 1, 0, 82);
         assertEquals(0, histogram.getBucketWindowSize());
@@ -753,7 +747,7 @@ public class SimpleNrSketchTest {
     }
 
     private static SimpleNrSketch testNegativeHistogram(final int numBuckets, final double from, final double to, final int numDataPoints, final Bucket[] expectedBuckets) {
-        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(numBuckets);
+        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(numBuckets, TEST_INIT_SCALE);
         final double max = insertData(histogram, from, to, numDataPoints);
         verifyHistogram(histogram, numDataPoints, from, max, expectedBuckets);
         return histogram;

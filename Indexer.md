@@ -2,7 +2,7 @@
 
 ## Class Hierarchy
 
-The indexers are in its own [Indexer Java package](src/main/java/com/newrelic/nrsketch). The package is self contained.
+The indexers are in its own [Indexer Java package](src/main/java/com/newrelic/nrsketch/indexer). The package is self-contained.
 It can be used without the rest of NrSketch. The class hierarchy in the package is:
 
     BucketIndexer // Interface
@@ -21,7 +21,7 @@ basically, mapping a "double" value to a bucket index, and mapping a bucket inde
 * bucket_lower_bound = base ^ bucket_index
 * base = 2 ^ (2 ^ -scale)
 
-**SubBucketIndexer** is the abstract base class for all subBucket indexers, which divides the  
+**SubBucketIndexer** is the abstract base class for all subBucket indexers, which divide the
 mantissa into log scale subbuckets for each binary exponent in "double". It works only on scales greater than 0.
 
 The followings are concrete classes you can actually instantiate:

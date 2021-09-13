@@ -36,6 +36,30 @@ public class SimpleNrSketch implements NrSketch {
     private double max = Double.NaN;
     private double sum = 0;
 
+    public SimpleNrSketch() {
+        this(DEFAULT_MAX_BUCKETS);
+    }
+
+    public SimpleNrSketch(final int maxNumBuckets) {
+        this(maxNumBuckets, DEFAULT_INIT_SCALE);
+    }
+
+    public SimpleNrSketch(final int maxNumBuckets, final int initialScale) {
+        this(maxNumBuckets, initialScale, true, DEFAULT_INDEXER_MAKER);
+    }
+
+    public static SimpleNrSketch newNegativeHistogram(final int maxNumBuckets, final int initialScale) {
+        return new SimpleNrSketch(maxNumBuckets, initialScale, false, DEFAULT_INDEXER_MAKER);
+    }
+
+    public SimpleNrSketch(final int maxNumBuckets, final int initialScale,
+                          final boolean bucketHoldsPositiveNumbers, final Function<Integer, ScaledExpIndexer> indexerMaker) {
+        buckets = new WindowedCounterArray(maxNumBuckets);
+        this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
+        this.indexerMaker = indexerMaker;
+        this.indexer = indexerMaker.apply(initialScale);
+    }
+
     @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof SimpleNrSketch)) {
@@ -85,30 +109,6 @@ public class SimpleNrSketch implements NrSketch {
         builder.append(buckets.toString());
         builder.append("}");
         return builder.toString();
-    }
-
-    public SimpleNrSketch() {
-        this(DEFAULT_MAX_BUCKETS);
-    }
-
-    public SimpleNrSketch(final int maxNumBuckets) {
-        this(maxNumBuckets, DEFAULT_INIT_SCALE);
-    }
-
-    public SimpleNrSketch(final int maxNumBuckets, final int initialScale) {
-        this(maxNumBuckets, initialScale, true, DEFAULT_INDEXER_MAKER);
-    }
-
-    public static SimpleNrSketch newNegativeHistogram(final int maxNumBuckets, final int initialScale) {
-        return new SimpleNrSketch(maxNumBuckets, initialScale, false, DEFAULT_INDEXER_MAKER);
-    }
-
-    public SimpleNrSketch(final int maxNumBuckets, final int initialScale,
-                          final boolean bucketHoldsPositiveNumbers, final Function<Integer, ScaledExpIndexer> indexerMaker) {
-        buckets = new WindowedCounterArray(maxNumBuckets);
-        this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
-        this.indexerMaker = indexerMaker;
-        this.indexer = indexerMaker.apply(initialScale);
     }
 
     private long valueToIndex(final double value) {

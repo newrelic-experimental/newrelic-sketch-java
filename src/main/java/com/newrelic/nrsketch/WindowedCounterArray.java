@@ -16,6 +16,18 @@ public class WindowedCounterArray {
     private long indexStart; // inclusive
     private long indexEnd;   // inclusive
 
+    public WindowedCounterArray(final int maxSize) {
+        this(maxSize, (byte) Byte.BYTES); // Start from smallest type
+    }
+
+    public WindowedCounterArray(final int maxSize, final byte bytesPerCounter) {
+        backingArray = new MultiTypeCounterArray(maxSize, bytesPerCounter);
+        this.maxSize = maxSize;
+        indexBase = NULL_INDEX;
+        indexStart = NULL_INDEX;
+        indexEnd = NULL_INDEX;
+    }
+
     @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof WindowedCounterArray)) {
@@ -60,18 +72,6 @@ public class WindowedCounterArray {
             builder.append("}");
         }
         return builder.toString();
-    }
-
-    public WindowedCounterArray(final int maxSize) {
-        this(maxSize, (byte) Byte.BYTES); // Start from smallest type
-    }
-
-    public WindowedCounterArray(final int maxSize, final byte bytesPerCounter) {
-        backingArray = new MultiTypeCounterArray(maxSize, bytesPerCounter);
-        this.maxSize = maxSize;
-        indexBase = NULL_INDEX;
-        indexStart = NULL_INDEX;
-        indexEnd = NULL_INDEX;
     }
 
     public int getMaxSize() {

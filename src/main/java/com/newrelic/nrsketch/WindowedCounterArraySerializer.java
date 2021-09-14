@@ -11,9 +11,8 @@ import static com.newrelic.nrsketch.WindowedCounterArray.NULL_INDEX;
 // This serializer is a logical writer that only writes elements in the window, and it shifts indexBase to indexStart.
 // The deserialized object won't be physically identical to the original, but is logically equivalent.
 //
-// The counter array is written as varint.
-//
 // This serializer uses the default Java byte order of big endian.
+// The elements in the counter array are written as varint.
 
 public class WindowedCounterArraySerializer {
     private static final byte WINDOWED_ARRAY_VERSION = 1; // This is a relatively simple data structure. Use one byte for version.

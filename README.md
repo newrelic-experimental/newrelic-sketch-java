@@ -10,8 +10,8 @@ prototype for Open Telemetry Enhancement Proposal
 149 [Add exponential bucketing to histogram protobuf](https://github.com/open-telemetry/oteps/blob/main/text/0149-exponential-histogram.md)
 . It is also an option in the Open Telemetry
 discussion [Referendum on Histogram format](https://github.com/open-telemetry/opentelemetry-specification/issues/1776).
-As a prototype, it is meant to demonstrate ideas. It has not been thoroughly tested, and some functionality may be
-missing. For example, serialization and deserialization, uploading the library to an artifactory repository have not
+As a prototype, it is meant to demonstrate ideas. Some functionality may be
+missing. For example, uploading the library to an artifactory repository has not
 been implemented. Work to "productize" the prototype is in progress.
 
 A scaled base2 exponential histogram has these properties:
@@ -68,6 +68,7 @@ features:
   counts.
 * Histogram merge code included
 * Percentile calculation code included
+* Serialization and deserialization code included
 
 With a reasonable default number of buckets of 320, a histogram can fit a dataset with contrast (maxValue / minValue) up
 to 1M at scale 4, for a 2.17% relative error. Here contrast = 2 ^ (numBuckets / 2^scale). When contrast is smaller, the
@@ -107,6 +108,10 @@ NrSketch provides the following interfaces and classes:
 * **ConcurrentNrSketch**: This is a concurrency wrapper on any class implementing the NrSketch interface. It adds "
   synchronized" for all methods of the interface. It can be used on top of SimpleNrSketch or ComboNrSketch. It does add
   some cpu overhead. Exact amount depends on the particular platform.
+
+* **NrSketchSerializer**: This class serializes a sketch to a ByteBuffer, or deserializes a sketch from a ByteBuffer. 
+  The bucket counters are written as [varint](https://en.wikipedia.org/wiki/Variable-length_quantity) to save space. At 
+the default max 320 buckets, typical serialized object size is less than 1KB.
 
 For your convenience, Jmh benchmark is included in this project to measure cpu cost (see jmhInsert.sh). To give you some
 rough idea on the relative cpu cost of the different classes, below are some numbers. As always, benchmark numbers

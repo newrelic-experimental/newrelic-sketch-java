@@ -12,23 +12,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static com.newrelic.nrsketch.WindowedCounterArraySerializer.getWindowedCounterArraySerializeBufferSize;
-import static com.newrelic.nrsketch.WindowedCounterArraySerializer.serializeWindowedCounterArray;
-
-// Not implemented as member functions of the classes so that multiple "third party" serializer and deserializers
+// Not implemented as member functions of the classes so that multiple "third party" serializers and deserializers
 // can be written and they are all created equal (no one has more privileged access to the classes)
 //
 // This serializer uses a 2 pass method. The 1st pass computes buffer size. The 2nd pass writes to the buffer.
 // This allows it to allocate a buffer of the exact size.
-// An alternate method may use a dynamic buffer that grows as we write to it. The alternate method avoids the 1st pass,
+// An alternate method could use a dynamic buffer that grows as we write to it. The alternate method avoids the 1st pass,
 // but may end up allocating 2x space in the worst case, and has to copy data over each time the buffer grows.
 //
 // This serializer uses the default Java byte order of big endian.
+// The elements in the counter array are written as varint.
 
 public class NrSketchSerializer {
     // Each histogram object has a 2 byte version number at the beginning.
     // The versions can distinguish among SimpleNrSketch, ComboNrSketch, and ConcurrentNrSketch.
-    // Thus given a serialized blob, the deserializer can create the correct object class from it.
+    // Given a serialized blob, the deserializer can restore the original object type.
     //
     // Versions 0 to 0x1FF are reserved for New Relic internal formats.
     private static final short SIMPLE_NRSKETCH_VERSION = 0x200;     // SimpleNrSketch:      0x200 to 0x2FF
@@ -40,17 +38,17 @@ public class NrSketchSerializer {
     public static ByteBuffer serializeNrSketch(final NrSketch sketch) {
         final ByteBuffer buffer = ByteBuffer.allocate(getNrSketchSerializeBufferSize(sketch));
         serializeNrSketch(sketch, buffer);
-        buffer.flip(); // Flip position to 0 for the convenience of readers
+        buffer.flip(); // Flip position to 0 to be reader ready.
         return buffer;
     }
 
-    public static ByteBuffer serializeNrSketch(final NrSketch sketch, final ByteBuffer buffer) {
+    public static void serializeNrSketch(final NrSketch sketch, final ByteBuffer buffer) {
         if (sketch instanceof SimpleNrSketch) {
-            return serializeSimpleNrSketch((SimpleNrSketch) sketch, buffer);
+            serializeSimpleNrSketch((SimpleNrSketch) sketch, buffer);
         } else if (sketch instanceof ComboNrSketch) {
-            return serializeComboNrSketch((ComboNrSketch) sketch, buffer);
+            serializeComboNrSketch((ComboNrSketch) sketch, buffer);
         } else if (sketch instanceof ConcurrentNrSketch) {
-            return serializeConcurrentNrSketch((ConcurrentNrSketch) sketch, buffer);
+            serializeConcurrentNrSketch((ConcurrentNrSketch) sketch, buffer);
         } else {
             throw new IllegalArgumentException("Unknown NrSketch class " + sketch.getClass().getName());
         }
@@ -85,7 +83,7 @@ public class NrSketchSerializer {
         }
     }
 
-    public static ByteBuffer serializeSimpleNrSketch(final SimpleNrSketch sketch, final ByteBuffer buffer) {
+    public static void serializeSimpleNrSketch(final SimpleNrSketch sketch, final ByteBuffer buffer) {
         buffer.putShort(SIMPLE_NRSKETCH_VERSION);
 
         // Write out summary fields first, so that we can easily deserialize summary only
@@ -101,19 +99,17 @@ public class NrSketchSerializer {
         buffer.putLong(sketch.getCountForNegatives());
         buffer.putLong(sketch.getCountForZero());
 
-        serializeWindowedCounterArray(sketch.getBuckets(), buffer);
-
-        return buffer;
+        WindowedCounterArraySerializer.serializeWindowedCounterArray(sketch.getBuckets(), buffer);
     }
 
     public static int getSimpleNrSketchSerializeBufferSize(final SimpleNrSketch sketch) {
         return Short.BYTES // Version
-                + Long.BYTES + Double.BYTES * 3 // Summary fields: count, sum, min, max
+                + SUMMARY_SIZE // Summary fields: count, sum, min, max
                 + Byte.BYTES // bucketHoldsPositiveNumbers
                 + Byte.BYTES // scale
                 + Byte.BYTES // indexer maker code
                 + Long.BYTES * 2 // countForNegatives, countForZero
-                + getWindowedCounterArraySerializeBufferSize(sketch.getBuckets());
+                + WindowedCounterArraySerializer.getWindowedCounterArraySerializeBufferSize(sketch.getBuckets());
     }
 
     public static NrSketch deserializeSimpleNrSketch(final ByteBuffer buffer) {
@@ -150,14 +146,16 @@ public class NrSketchSerializer {
     }
 
     private static byte getIndexerMakerCode(Function<Integer, ScaledExpIndexer> indexMaker) {
+        // Using enum ordinal number is error prone. Somebody changing the order may not be aware that the order is
+        // used in serialization format. Thus we hardcode the codes here.
         if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.LOG_INDEXER::getIndexer) {
             return 0;
         } else if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.SUB_BUCKET_LOG_INDEXER::getIndexer) {
-            return 0;
+            return 1;
         } else if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.SUB_BUCKET_LOOKUP_INDEXER::getIndexer) {
-            return 0;
+            return 2;
         } else if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.AUTO_SELECT::getIndexer) {
-            return 0;
+            return 3;
         } else {
             throw new IllegalArgumentException("Unknown indexer maker " + indexMaker);
         }
@@ -178,13 +176,14 @@ public class NrSketchSerializer {
         }
     }
 
-    public static ByteBuffer serializeComboNrSketch(final ComboNrSketch sketch, final ByteBuffer buffer) {
+    public static void serializeComboNrSketch(final ComboNrSketch sketch, final ByteBuffer buffer) {
         buffer.putShort(COMBO_NRSKETCH_VERSION);
         buffer.putInt(sketch.getMaxNumBucketsPerHistogram());
         buffer.putInt(sketch.getInitialScale());
         buffer.put((byte) sketch.getHistograms().size());
 
         // When there is only 1 histogram, we can load summary directly from it. So no need for a separate summary section.
+        // For multiple histograms, write a summary here for quick reading.
         if (sketch.getHistograms().size() > 1) {
             buffer.putLong(sketch.getCount());
             buffer.putDouble(sketch.getSum());
@@ -195,7 +194,6 @@ public class NrSketchSerializer {
         for (NrSketch subSketch : sketch.getHistograms()) {
             serializeNrSketch(subSketch, buffer);
         }
-        return buffer;
     }
 
     public static int getComboNrSketchSerializeBufferSize(final ComboNrSketch sketch) {
@@ -224,6 +222,10 @@ public class NrSketchSerializer {
         final int initialScale = buffer.getInt();
         final int histogramSize = buffer.get();
 
+        if (histogramSize > 1) {
+            buffer.position(buffer.position() + SUMMARY_SIZE); // Skip summary section
+        }
+
         final List<NrSketch> subSketches = new ArrayList<>(histogramSize);
 
         for (int i = 0; i < histogramSize; i++) {
@@ -236,10 +238,9 @@ public class NrSketchSerializer {
                 subSketches);
     }
 
-    public static ByteBuffer serializeConcurrentNrSketch(final ConcurrentNrSketch sketch, final ByteBuffer buffer) {
+    public static void serializeConcurrentNrSketch(final ConcurrentNrSketch sketch, final ByteBuffer buffer) {
         buffer.putShort(CONCURRENT_NRSKETCH_VERSION);
         serializeNrSketch(sketch, buffer);
-        return buffer;
     }
 
     public static int getConcurrentNrSketchSerializeBufferSize(final ConcurrentNrSketch sketch) {

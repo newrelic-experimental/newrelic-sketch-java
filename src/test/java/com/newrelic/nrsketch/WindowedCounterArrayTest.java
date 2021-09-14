@@ -6,6 +6,8 @@ package com.newrelic.nrsketch;
 
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -46,54 +48,100 @@ public class WindowedCounterArrayTest {
     @Test
     public void testSerialization() {
         final WindowedCounterArray array = new WindowedCounterArray(10);
-        testSerialization(array, 22, 0); // test empty array
+        testSerialization(array, 22); // test empty array
 
         assertEquals("maxSize=10, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808", array.toString());
 
         array.increment(100, 1);
-        testSerialization(array, 24, 1);
+        testSerialization(array, 23);
 
         assertEquals("maxSize=10, indexBase=100, indexStart=100, indexEnd=100, array={1,}", array.toString());
 
         array.increment(100, 254);
-        assertEquals(255, array.get(100)); // Still fits in 1 byte.
-        testSerialization(array, 24, 1);
+        assertEquals(255, array.get(100)); // 1 byte counter
+        testSerialization(array, 24);
 
         array.increment(100, 1);
-        assertEquals(256, array.get(100)); // Needs 2 bytes/counter
-        testSerialization(array, 25, 2);
+        assertEquals(256, array.get(100)); // 2 byte counter
+        testSerialization(array, 24);
 
         array.increment(101, 0x0A0B0CL); // 3 byte counter
         assertEquals(0x0A0B0CL, array.get(101));
-        testSerialization(array, 29, 3);
+        testSerialization(array, 27);
 
         array.increment(104, 0x0A0B0C0DL); // 4 byte counter. test endian.
         assertEquals(0x0A0B0C0DL, array.get(104));
-        testSerialization(array, 43, 4);
+        testSerialization(array, 33);
 
         array.increment(102, 0xFFFFFFFFL); // test FF for sign extension (should treat as unsigned)
         assertEquals(4294967295L, array.get(102));
-        testSerialization(array, 43, 4);
+        testSerialization(array, 37);
 
         array.increment(99, 0x0A0B0C0D01L); // 5 byte counter
         assertEquals(0x0A0B0C0D01L, array.get(99));
-        testSerialization(array, 53, 5);
+        testSerialization(array, 43);
 
         array.increment(95, 0x0A0B0C0D01020304L); // 8 byte counter. test endian.
         assertEquals(0x0A0B0C0D01020304L, array.get(95));
-        testSerialization(array, 103, 8);
+        testSerialization(array, 55);
 
         assertEquals("maxSize=10, indexBase=100, indexStart=95, indexEnd=104, array={723685415114113796,0,0,0,43135012097,256,658188,4294967295,0,168496141,}", array.toString());
     }
 
     // Write to buffer, then read back and compare.
-    private void testSerialization(final WindowedCounterArray array, final int expectedBufferSize, final int expectedBytesPerCounterSerialized) {
-        // Serialization not supported.
+    private void testSerialization(final WindowedCounterArray array, final int expectedBufferSize) {
+        assertEquals(expectedBufferSize, WindowedCounterArraySerializer.getWindowedCounterArraySerializeBufferSize(array));
+        final ByteBuffer buffer = ByteBuffer.allocate(expectedBufferSize);
+        WindowedCounterArraySerializer.serializeWindowedCounterArray(array, buffer);
+        assertEquals(expectedBufferSize, buffer.position());
+        buffer.flip();
+        assertEquals(array, WindowedCounterArraySerializer.deserializeWindowedCounterArray(buffer));
     }
 
     private void assertMeta(final WindowedCounterArray array, final int expectedSize, final long expectedStart, final long expectedEnd) {
         assertEquals(expectedSize, array.getWindowSize());
         assertEquals(expectedStart, array.getIndexStart());
         assertEquals(expectedEnd, array.getIndexEnd());
+    }
+
+    @Test
+    public void testVarint() {
+        testVarint(-1, 10);
+        testVarint(-2, 10);
+        testVarint(-100, 10);
+        testVarint(-300, 10);
+
+        testVarint(0, 1);
+        testVarint(100, 1);
+        testVarint(300, 2);
+
+        testVarint(Integer.MAX_VALUE, 5);
+
+        testVarint(Long.MAX_VALUE, 9);
+        testVarint(Long.MIN_VALUE, 10);
+
+        for (int i = 0; i <= 63; i++) {
+            final long value = 1L << i;
+            testVarint(value, expectedVarint64EncodedLength(value));
+        }
+
+        for (long value = 0; value < 1000_000; value++) {
+            testVarint(value, expectedVarint64EncodedLength(value));
+        }
+    }
+
+    // Alternate method for getVarint64EncodedLength(). To do: figure out which method is faster.
+    public int expectedVarint64EncodedLength(final long value) {
+        final int nBits = 64 - Long.numberOfLeadingZeros(value);
+        return nBits >= 8 ? (nBits + 6) / 7 : 1;
+    }
+
+    private void testVarint(final long value, final int expectedSize) {
+        assertEquals(expectedSize, WindowedCounterArraySerializer.getVarint64EncodedLength(value));
+        final ByteBuffer buffer = ByteBuffer.allocate(20);
+        WindowedCounterArraySerializer.writeVarint64(value, buffer);
+        buffer.flip();
+        assertEquals(expectedSize, buffer.limit());
+        assertEquals(value, WindowedCounterArraySerializer.readVarint64(buffer));
     }
 }

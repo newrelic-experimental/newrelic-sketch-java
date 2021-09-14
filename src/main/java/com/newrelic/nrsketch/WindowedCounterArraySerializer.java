@@ -11,31 +11,28 @@ import static com.newrelic.nrsketch.WindowedCounterArray.NULL_INDEX;
 // This serializer is a logical writer that only writes elements in the window, and it shifts indexBase to indexStart.
 // The deserialized object won't be physically identical to the original, but is logically equivalent.
 //
-// For a given array, this serializer writes each counter with the same "bytes per counter" from MultiTypeCounterArray.
-// Alternatively, it might write in varint format (element size may vary within one array),
-// but that adds complexity and cpu cost.
+// The counter array is written as varint.
 //
 // This serializer uses the default Java byte order of big endian.
 
 public class WindowedCounterArraySerializer {
     private static final byte WINDOWED_ARRAY_VERSION = 1; // This is a relatively simple data structure. Use one byte for version.
 
-    public static ByteBuffer serializeWindowedCounterArray(final WindowedCounterArray array, final ByteBuffer buffer) {
+    public static void serializeWindowedCounterArray(final WindowedCounterArray array, final ByteBuffer buffer) {
         buffer.put(WINDOWED_ARRAY_VERSION);
         buffer.putInt(array.getMaxSize());
 
+        // indexBase is not serialized
         buffer.putLong(array.getIndexStart());
         buffer.putLong(array.getIndexEnd());
 
-        final byte bytesPerCounter = array.getBytesPerCounter();
-        buffer.put(bytesPerCounter);
+        buffer.put(array.getBytesPerCounter());
 
         if (!array.isEmpty()) {
             for (long index = array.getIndexStart(); index <= array.getIndexEnd(); index++) {
-                writeVarint64(buffer, array.get(index));
+                writeVarint64(array.get(index), buffer);
             }
         }
-        return buffer;
     }
 
     public static int getWindowedCounterArraySerializeBufferSize(final WindowedCounterArray array) {
@@ -46,7 +43,7 @@ public class WindowedCounterArraySerializer {
 
         if (!array.isEmpty()) {
             for (long index = array.getIndexStart(); index <= array.getIndexEnd(); index++) {
-                size += varint64EncodedLength(array.get(index));
+                size += getVarint64EncodedLength(array.get(index));
             }
         }
         return size;
@@ -74,7 +71,7 @@ public class WindowedCounterArraySerializer {
         return array;
     }
 
-    public static void writeVarint64(final ByteBuffer buffer, long value) {
+    public static void writeVarint64(long value, final ByteBuffer buffer) {
         while ((value & -128L) != 0L) {
             buffer.put((byte) (value | 128L));
             value >>>= 7;
@@ -82,7 +79,7 @@ public class WindowedCounterArraySerializer {
         buffer.put((byte) value);
     }
 
-    public static int varint64EncodedLength(long value) {
+    public static int getVarint64EncodedLength(long value) {
         int length = 0;
         while ((value & -128L) != 0L) {
             length++;

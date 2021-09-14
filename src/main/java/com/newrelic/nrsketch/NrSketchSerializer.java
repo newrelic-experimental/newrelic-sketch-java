@@ -40,7 +40,7 @@ public class NrSketchSerializer {
     public static ByteBuffer serializeNrSketch(final NrSketch sketch) {
         final ByteBuffer buffer = ByteBuffer.allocate(getNrSketchSerializeBufferSize(sketch));
         serializeNrSketch(sketch, buffer);
-        buffer.rewind(); // Rewind to beginning of buffer for the convenience of readers
+        buffer.flip(); // Flip position to 0 for the convenience of readers
         return buffer;
     }
 

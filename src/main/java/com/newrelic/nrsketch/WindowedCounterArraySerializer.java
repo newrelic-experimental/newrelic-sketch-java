@@ -9,10 +9,11 @@ import java.nio.ByteBuffer;
 import static com.newrelic.nrsketch.WindowedCounterArray.NULL_INDEX;
 
 // This serializer is a logical writer that only writes elements in the window, and it shifts indexBase to indexStart.
-// The deserialized object won't be identical to the original, but is logically equivalent.
+// The deserialized object won't be physically identical to the original, but is logically equivalent.
 //
 // For a given array, this serializer writes each counter with the same "bytes per counter" from MultiTypeCounterArray.
-// Alternatively, it might write in varint format (element size may vary within one array), but that adds complexity and cpu cost.
+// Alternatively, it might write in varint format (element size may vary within one array),
+// but that adds complexity and cpu cost.
 //
 // This serializer uses the default Java byte order of big endian.
 
@@ -29,22 +30,24 @@ public class WindowedCounterArraySerializer {
         final byte bytesPerCounter = array.getBytesPerCounter();
         buffer.put(bytesPerCounter);
 
-        if (array.getIndexStart() != NULL_INDEX) {
+        if (!array.isEmpty()) {
             for (long index = array.getIndexStart(); index <= array.getIndexEnd(); index++) {
-                putLong(buffer, array.get(index), bytesPerCounter);
+                writeVarint64(buffer, array.get(index));
             }
         }
         return buffer;
     }
 
     public static int getWindowedCounterArraySerializeBufferSize(final WindowedCounterArray array) {
-        int size = Byte.BYTES // version
-                + Integer.BYTES // max size;
+        int size = Byte.BYTES     // version
+                + Integer.BYTES   // max size;
                 + Long.BYTES * 2  // index start and end
-                + Byte.BYTES; // bytesPerCounter
+                + Byte.BYTES;     // bytesPerCounter
 
-        if (array.getIndexStart() != NULL_INDEX) {
-            size += array.getWindowSize() * array.getBytesPerCounter();
+        if (!array.isEmpty()) {
+            for (long index = array.getIndexStart(); index <= array.getIndexEnd(); index++) {
+                size += varint64EncodedLength(array.get(index));
+            }
         }
         return size;
     }
@@ -65,43 +68,45 @@ public class WindowedCounterArraySerializer {
 
         if (indexStart != NULL_INDEX) {
             for (long index = indexStart; index <= indexEnd; index++) {
-                array.increment(index, getLong(buffer, bytesPerCounter));
+                array.increment(index, readVarint64(buffer));
             }
         }
         return array;
     }
 
-    private static void putLong(final ByteBuffer buffer, long value, int bytesPerCounter) {
-        switch (bytesPerCounter) {
-            case Byte.BYTES:
-                buffer.put((byte) value);
-                break;
-            case Short.BYTES:
-                buffer.putShort((short) value);
-                break;
-            case Integer.BYTES:
-                buffer.putInt((int) value);
-                break;
-            case Long.BYTES:
-                buffer.putLong(value);
-                break;
-            default:
-                throw new RuntimeException("Unknown bytesPerCounter " + bytesPerCounter);
+    public static void writeVarint64(final ByteBuffer buffer, long value) {
+        while ((value & -128L) != 0L) {
+            buffer.put((byte) (value | 128L));
+            value >>>= 7;
         }
+        buffer.put((byte) value);
     }
 
-    private static long getLong(final ByteBuffer buffer, final int bytesPerCounter) {
-        switch (bytesPerCounter) {
-            case Byte.BYTES:
-                return buffer.get();
-            case Short.BYTES:
-                return buffer.getShort();
-            case Integer.BYTES:
-                return buffer.getInt();
-            case Long.BYTES:
-                return buffer.getLong();
-            default:
-                throw new RuntimeException("Unknown bytesPerCounter " + bytesPerCounter);
+    public static int varint64EncodedLength(long value) {
+        int length = 0;
+        while ((value & -128L) != 0L) {
+            length++;
+            value >>>= 7;
         }
+        length++;
+        return length;
+    }
+
+    public static long readVarint64(final ByteBuffer buffer) {
+        int shift = 0;
+        long result = 0L;
+
+        while (true) {
+            final byte b1 = buffer.get();
+            result |= (long) (b1 & 127) << shift;
+            if ((b1 & 128) != 128) {
+                break;
+            }
+            shift += 7;
+            if (shift >= 64) {
+                throw new RuntimeException("Exceeded max length of varint64");
+            }
+        }
+        return result;
     }
 }

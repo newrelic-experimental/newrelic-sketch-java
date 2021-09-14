@@ -52,12 +52,39 @@ public class SimpleNrSketch implements NrSketch {
         return new SimpleNrSketch(maxNumBuckets, initialScale, false, DEFAULT_INDEXER_MAKER);
     }
 
-    public SimpleNrSketch(final int maxNumBuckets, final int initialScale,
-                          final boolean bucketHoldsPositiveNumbers, final Function<Integer, ScaledExpIndexer> indexerMaker) {
+    public SimpleNrSketch(final int maxNumBuckets,
+                          final int initialScale,
+                          final boolean bucketHoldsPositiveNumbers,
+                          final Function<Integer, ScaledExpIndexer> indexerMaker) {
         buckets = new WindowedCounterArray(maxNumBuckets);
         this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
         this.indexerMaker = indexerMaker;
         this.indexer = indexerMaker.apply(initialScale);
+    }
+
+    // For deserialization only
+    public SimpleNrSketch(final WindowedCounterArray buckets,
+                          final boolean bucketHoldsPositiveNumbers,
+                          final int scale,
+                          final Function<Integer, ScaledExpIndexer> indexerMaker,
+                          final long totalCount,
+                          final long countForNegatives,
+                          final long countForZero,
+                          final double min,
+                          final double max,
+                          final double sum) {
+        this.buckets = buckets;
+        this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
+        this.indexer = indexerMaker.apply(scale);
+        this.indexerMaker = indexerMaker;
+
+        this.totalCount = totalCount;
+        this.countForNegatives = countForNegatives;
+        this.countForZero = countForZero;
+
+        this.min = min;
+        this.max = max;
+        this.sum = sum;
     }
 
     @Override
@@ -81,6 +108,10 @@ public class SimpleNrSketch implements NrSketch {
 
     public int getScale() {
         return indexer.getScale();
+    }
+
+    public Function<Integer, ScaledExpIndexer> getIndexerMaker() {
+        return indexerMaker;
     }
 
     public static boolean equalsWithNaN(final double a, final double b) {
@@ -425,6 +456,10 @@ public class SimpleNrSketch implements NrSketch {
         return totalCount;
     }
 
+    public long getCountForZero() {
+        return countForZero;
+    }
+
     @Override
     public long getCountForNegatives() {
         return countForNegatives;
@@ -452,6 +487,10 @@ public class SimpleNrSketch implements NrSketch {
 
     public int getBucketWindowSize() {
         return (int) buckets.getWindowSize();
+    }
+
+    public WindowedCounterArray getBuckets() {
+        return buckets;
     }
 
     @Override

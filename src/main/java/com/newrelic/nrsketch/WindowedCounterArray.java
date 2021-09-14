@@ -82,6 +82,10 @@ public class WindowedCounterArray {
         return indexBase == NULL_INDEX ? 0 : indexEnd - indexStart + 1;
     }
 
+    public byte getBytesPerCounter() {
+        return backingArray.getBytesPerCounter();
+    }
+
     public boolean isEmpty() {
         return getWindowSize() <= 0;
     }

@@ -6,7 +6,6 @@ package com.newrelic.nrsketch;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.TestOnly;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -41,6 +40,36 @@ public class ComboNrSketch implements NrSketch {
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
         histograms = new ArrayList<>(2);
+    }
+
+    // For deserialization only
+    public ComboNrSketch(final int maxNumBuckets, final int initialScale, final List<NrSketch> histograms) {
+        this.maxNumBucketsPerHistogram = maxNumBuckets / 2; // Convert to per histogram max.
+        this.initialScale = initialScale;
+        this.histograms = histograms;
+
+        switch (histograms.size()) {
+            case 0:
+                break;
+            case 1:
+                final NrSketch subSketch = histograms.get(0);
+                if (subSketch instanceof SimpleNrSketch) {
+                    if (((SimpleNrSketch) subSketch).isBucketHoldsPositiveNumbers()) {
+                        positiveHistogram = subSketch;
+                    } else {
+                        negativeHistogram = subSketch;
+                    }
+                } else {
+                    throw new IllegalArgumentException("Unknown subsketch class " + subSketch.getClass().getName());
+                };
+                break;
+            case 2:
+                negativeHistogram = histograms.get(0);
+                positiveHistogram = histograms.get(1);
+                break;
+            default:
+                throw new IllegalStateException("Unexpected histograms list size " + histograms.size());
+        }
     }
 
     private void setPositiveHistogram(final NrSketch histogram) {
@@ -133,10 +162,6 @@ public class ComboNrSketch implements NrSketch {
         return builder.toString();
     }
 
-    private RuntimeException histogramListSizeException() {
-        return new IllegalStateException("Unexpected histograms list size " + histograms.size());
-    }
-
     private <R> R mergeField(final R nullValue, final Function<NrSketch, R> extractor, final BiFunction<R, R, R> merger) {
         switch (histograms.size()) {
             case 0:
@@ -146,7 +171,7 @@ public class ComboNrSketch implements NrSketch {
             case 2:
                 return merger.apply(extractor.apply(histograms.get(0)), extractor.apply(histograms.get(1)));
             default:
-                throw histogramListSizeException();
+                throw new IllegalStateException("Unexpected histograms list size " + histograms.size());
         }
     }
 
@@ -161,6 +186,10 @@ public class ComboNrSketch implements NrSketch {
     @Override
     public int getMaxNumOfBuckets() {
         return mergeField(0, NrSketch::getMaxNumOfBuckets, Integer::sum);
+    }
+
+    public int getInitialScale() {
+        return initialScale;
     }
 
     @Override
@@ -231,8 +260,11 @@ public class ComboNrSketch implements NrSketch {
         return new ComboIterator();
     }
 
-    @TestOnly
-    List<NrSketch> getHistograms() {
+    // List size can be
+    //      0: empty sketch
+    //      1: negative histogram only, or positive histogram only
+    //      2: negative (list[0]) and positiive (list[1]) histograms
+    public List<NrSketch> getHistograms() {
         return histograms;
     }
 }

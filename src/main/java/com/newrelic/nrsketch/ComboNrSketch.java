@@ -43,8 +43,8 @@ public class ComboNrSketch implements NrSketch {
     }
 
     // For deserialization only
-    public ComboNrSketch(final int maxNumBuckets, final int initialScale, final List<NrSketch> histograms) {
-        this.maxNumBucketsPerHistogram = maxNumBuckets / 2; // Convert to per histogram max.
+    public ComboNrSketch(final int maxNumBucketsPerHistogram, final int initialScale, final List<NrSketch> histograms) {
+        this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
         this.histograms = histograms;
 
@@ -186,6 +186,10 @@ public class ComboNrSketch implements NrSketch {
     @Override
     public int getMaxNumOfBuckets() {
         return mergeField(0, NrSketch::getMaxNumOfBuckets, Integer::sum);
+    }
+
+    public int getMaxNumBucketsPerHistogram() {
+        return maxNumBucketsPerHistogram;
     }
 
     public int getInitialScale() {

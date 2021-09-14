@@ -35,8 +35,10 @@ public class NrSketchSerializer {
     private static final short COMBO_NRSKETCH_VERSION = 0x300;      // ComboNrSketch:       0x300 to 0x3FF
     private static final short CONCURRENT_NRSKETCH_VERSION = 0x400; // ConcurrentNrSketch:  0x400 to 0x4FF
 
+    private static final int SUMMARY_SIZE = Long.BYTES + Double.BYTES * 3; // Summary fields: count, sum, min, max
+
     public static ByteBuffer serializeNrSketch(final NrSketch sketch) {
-        final ByteBuffer buffer = ByteBuffer.allocate(getSerializeBufferSize(sketch));
+        final ByteBuffer buffer = ByteBuffer.allocate(getNrSketchSerializeBufferSize(sketch));
         serializeNrSketch(sketch, buffer);
         buffer.rewind(); // Rewind to beginning of buffer for the convenience of readers
         return buffer;
@@ -54,7 +56,7 @@ public class NrSketchSerializer {
         }
     }
 
-    public static int getSerializeBufferSize(final NrSketch sketch) {
+    public static int getNrSketchSerializeBufferSize(final NrSketch sketch) {
         if (sketch instanceof SimpleNrSketch) {
             return getSimpleNrSketchSerializeBufferSize((SimpleNrSketch) sketch);
         } else if (sketch instanceof ComboNrSketch) {
@@ -178,9 +180,17 @@ public class NrSketchSerializer {
 
     public static ByteBuffer serializeComboNrSketch(final ComboNrSketch sketch, final ByteBuffer buffer) {
         buffer.putShort(COMBO_NRSKETCH_VERSION);
-        buffer.putInt(sketch.getMaxNumOfBuckets());
+        buffer.putInt(sketch.getMaxNumBucketsPerHistogram());
         buffer.putInt(sketch.getInitialScale());
-        buffer.put((byte)sketch.getHistograms().size());
+        buffer.put((byte) sketch.getHistograms().size());
+
+        // When there is only 1 histogram, we can load summary directly from it. So no need for a separate summary section.
+        if (sketch.getHistograms().size() > 1) {
+            buffer.putLong(sketch.getCount());
+            buffer.putDouble(sketch.getSum());
+            buffer.putDouble(sketch.getMin());
+            buffer.putDouble(sketch.getMax());
+        }
 
         for (NrSketch subSketch : sketch.getHistograms()) {
             serializeNrSketch(subSketch, buffer);
@@ -189,14 +199,17 @@ public class NrSketchSerializer {
     }
 
     public static int getComboNrSketchSerializeBufferSize(final ComboNrSketch sketch) {
-        int size = Short.BYTES // Version
+        int size = Short.BYTES  // Version
                 + Integer.BYTES // getMaxNumOfBuckets
                 + Integer.BYTES // getInitialScale
-                + Byte.BYTES    // histogram list size
-                + getSerializeBufferSize(sketch);
+                + Byte.BYTES;   // histogram list size
+
+        if (sketch.getHistograms().size() > 1) {
+            size += SUMMARY_SIZE;
+        }
 
         for (NrSketch subSketch : sketch.getHistograms()) {
-            size += getSerializeBufferSize(subSketch);
+            size += getNrSketchSerializeBufferSize(subSketch);
         }
         return size;
     }
@@ -231,7 +244,7 @@ public class NrSketchSerializer {
 
     public static int getConcurrentNrSketchSerializeBufferSize(final ConcurrentNrSketch sketch) {
         return Short.BYTES // Version
-                + getSerializeBufferSize(sketch);
+                + getNrSketchSerializeBufferSize(sketch);
     }
 
     public static NrSketch deserializeConcurrentNrSketch(final ByteBuffer buffer) {

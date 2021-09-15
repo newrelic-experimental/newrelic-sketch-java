@@ -135,6 +135,7 @@ public class ComboNrSketch implements NrSketch {
         }
         final ComboNrSketch other = (ComboNrSketch) obj;
         if (maxNumBucketsPerHistogram != other.maxNumBucketsPerHistogram
+                || initialScale != other.initialScale
                 || histograms.size() != other.histograms.size()) {
             return false;
         }

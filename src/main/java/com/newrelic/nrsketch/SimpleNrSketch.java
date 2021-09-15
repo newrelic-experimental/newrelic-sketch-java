@@ -94,13 +94,14 @@ public class SimpleNrSketch implements NrSketch {
         }
         final SimpleNrSketch other = (SimpleNrSketch) obj;
 
-        // Only scale matters. Indexer and indexerOption are not used in equals().
+        // Only scale matters. Indexer is not used in equals().
         return totalCount == other.totalCount
                 && sum == other.sum
                 && equalsWithNaN(min, other.min)
                 && equalsWithNaN(max, other.max)
                 && bucketHoldsPositiveNumbers == other.bucketHoldsPositiveNumbers
                 && getScale() == other.getScale()
+                && indexerMaker.equals(other.indexerMaker)
                 && countForNegatives == other.countForNegatives
                 && countForZero == other.countForZero
                 && buckets.equals(other.buckets);

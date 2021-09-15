@@ -32,6 +32,14 @@ public class ConcurrentNrSketch implements NrSketch {
     }
 
     @Override
+    public boolean equals(final Object obj) {
+        if (!(obj instanceof ConcurrentNrSketch)) {
+            return false;
+        }
+        return sketch.equals(((ConcurrentNrSketch) obj).sketch);
+    }
+
+    @Override
     public synchronized void insert(final double d, final long instances) {
         sketch.insert(d, instances);
     }

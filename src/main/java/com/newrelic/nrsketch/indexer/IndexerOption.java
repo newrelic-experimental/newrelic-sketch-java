@@ -6,6 +6,8 @@ package com.newrelic.nrsketch.indexer;
 
 import java.util.function.Function;
 
+// The option enum is recorded as a code by NrSketchSerializer and restored on deserialization.
+// Be careful when changing the semantic of an option.
 public enum IndexerOption implements Function<Integer, ScaledExpIndexer> {
     LOG_INDEXER {
         public ScaledExpIndexer getIndexer(final int scale) {

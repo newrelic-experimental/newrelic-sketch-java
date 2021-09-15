@@ -5,14 +5,11 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.NrSketch.Bucket;
-import com.newrelic.nrsketch.indexer.ExponentIndexer;
 import com.newrelic.nrsketch.indexer.IndexerOption;
-import com.newrelic.nrsketch.indexer.LogIndexer;
 import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
-import com.newrelic.nrsketch.indexer.SubBucketLogIndexer;
-import com.newrelic.nrsketch.indexer.SubBucketLookupIndexer;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
@@ -68,7 +65,7 @@ public class SimpleNrSketchTest {
         assertEquals(nBuckets, histogram.getBucketWindowSize());
         assertEquals(nBuckets, histogram.getMaxNumOfBuckets());
 
-        verifySerialization(histogram, 4, 2, 723);
+        verifySerialization(histogram, 555);
     }
 
     // Test that ">>" can produce a new index during downscaling.
@@ -127,8 +124,15 @@ public class SimpleNrSketchTest {
         assertDoubleEquals(expectedRelativeError, histogram.getPercentileRelativeError(), ERROR_DELTA);
     }
 
-    private static void verifySerialization(final SimpleNrSketch histogram, final int expectedBytesPerBucketInMemory, final int expectedBytesPerBucketSerialized, final int expectedBufferSize) {
-        // TODO: test protobuf
+    public static void verifySerialization(final NrSketch sketch, final int expectedBufferSize) {
+        final ByteBuffer buffer = NrSketchSerializer.serializeNrSketch(sketch);
+        final NrSketch readBack = NrSketchSerializer.deserializeNrSketch(buffer);
+
+        assertEquals(expectedBufferSize, buffer.position());
+        assertEquals(expectedBufferSize, buffer.limit());
+        assertEquals(expectedBufferSize, buffer.capacity());
+
+        assertEquals(sketch, readBack);
     }
 
     static final double INITIAL_ERROR = 8.4612692737477E-5;
@@ -138,24 +142,24 @@ public class SimpleNrSketchTest {
         final SimpleNrSketch histogram = new SimpleNrSketch(10);
 
         verifyRelativeError(histogram, 12, INITIAL_ERROR);
-        verifySerialization(histogram, 1, 0, 82);
+        verifySerialization(histogram, 75);
         assertEquals(0, histogram.getBucketWindowSize());
 
         assertEquals("totalCount=0, sum=0.0, min=NaN, max=NaN, bucketHoldsPositiveNumbers=true, scale=12, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808}", histogram.toString());
 
         histogram.insert(1);
         verifyRelativeError(histogram, 12, INITIAL_ERROR);
-        verifySerialization(histogram, 1, 1, 84);
+        verifySerialization(histogram, 76);
         assertEquals(1, histogram.getBucketWindowSize());
 
         histogram.insert(2);
         verifyRelativeError(histogram, 3, 0.0625);
-        verifySerialization(histogram, 1, 1, 88);
+        verifySerialization(histogram, 84);
         assertEquals(9, histogram.getBucketWindowSize());
 
         histogram.insert(128);
         verifyRelativeError(histogram, 0, .5);
-        verifySerialization(histogram, 1, 1, 87); // Buf size is smaller because there is more shift and smaller window size.
+        verifySerialization(histogram, 83); // Buf size gets smaller because of downscaling
         assertEquals(8, histogram.getBucketWindowSize());
 
         assertEquals("totalCount=3, sum=131.0, min=1.0, max=128.0, bucketHoldsPositiveNumbers=true, scale=0, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=0, indexStart=0, indexEnd=7, array={1,1,0,0,0,0,0,1,}}", histogram.toString());
@@ -723,7 +727,7 @@ public class SimpleNrSketchTest {
     public void negativeHistogramSmallDataSet() {
         final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10, TEST_INIT_SCALE);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
-        verifySerialization(histogram, 1, 0, 82);
+        verifySerialization(histogram, 75);
         assertEquals(0, histogram.getBucketWindowSize());
 
         assertEquals("totalCount=0, sum=0.0, min=NaN, max=NaN, bucketHoldsPositiveNumbers=false, scale=12, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808}", histogram.toString());
@@ -732,7 +736,7 @@ public class SimpleNrSketchTest {
         verifyHistogram(histogram, 1, -10, -10, new Bucket[]{
                 new Bucket(-10.000000, -10, 1), // bucket 1
         });
-        verifySerialization(histogram, 1, 1, 84);
+        verifySerialization(histogram, 76);
         assertEquals(1, histogram.getBucketWindowSize());
 
         histogram.insert(-100);
@@ -740,7 +744,7 @@ public class SimpleNrSketchTest {
                 new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
                 new Bucket(-11.313708498984761, -10.0, 1), // bucket 2
         });
-        verifySerialization(histogram, 1, 1, 91);
+        verifySerialization(histogram, 83);
         assertEquals(8, histogram.getBucketWindowSize());
 
         assertEquals("totalCount=2, sum=-110.0, min=-100.0, max=-10.0, bucketHoldsPositiveNumbers=false, scale=1, countForNegatives=2, countForZero=0, buckets={maxSize=10, indexBase=6, indexStart=6, indexEnd=13, array={1,0,0,0,0,0,0,1,}}", histogram.toString());

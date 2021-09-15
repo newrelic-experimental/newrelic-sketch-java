@@ -21,7 +21,7 @@ public class SimpleNrSketch implements NrSketch {
     public static final int DEFAULT_MAX_BUCKETS = 320; // 2.17% relative error (scale 4) for max/min contrast up to 1M
     public static final int DEFAULT_INIT_SCALE = 12; // .0085% relative error
 
-    public static final Function<Integer, ScaledExpIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT::getIndexer;
+    public static final Function<Integer, ScaledExpIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT;
 
     private WindowedCounterArray buckets;
     private final boolean bucketHoldsPositiveNumbers;

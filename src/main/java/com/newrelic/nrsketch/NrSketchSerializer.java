@@ -145,32 +145,32 @@ public class NrSketchSerializer {
                 sum);
     }
 
-    private static byte getIndexerMakerCode(Function<Integer, ScaledExpIndexer> indexMaker) {
+    static byte getIndexerMakerCode(Function<Integer, ScaledExpIndexer> indexMaker) {
         // Using enum ordinal number is error prone. Somebody changing the order may not be aware that the order is
         // used in serialization format. Thus we hardcode the codes here.
-        if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.LOG_INDEXER::getIndexer) {
+        if (indexMaker == IndexerOption.LOG_INDEXER) {
             return 0;
-        } else if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.SUB_BUCKET_LOG_INDEXER::getIndexer) {
+        } else if (indexMaker == IndexerOption.SUB_BUCKET_LOG_INDEXER) {
             return 1;
-        } else if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.SUB_BUCKET_LOOKUP_INDEXER::getIndexer) {
+        } else if (indexMaker == IndexerOption.SUB_BUCKET_LOOKUP_INDEXER) {
             return 2;
-        } else if (indexMaker == (Function<Integer, ScaledExpIndexer>) IndexerOption.AUTO_SELECT::getIndexer) {
+        } else if (indexMaker == IndexerOption.AUTO_SELECT) {
             return 3;
         } else {
             throw new IllegalArgumentException("Unknown indexer maker " + indexMaker);
         }
     }
 
-    private static Function<Integer, ScaledExpIndexer> getIndexerMakeFromCode(final byte code) {
+    static Function<Integer, ScaledExpIndexer> getIndexerMakeFromCode(final byte code) {
         switch (code) {
             case 0:
-                return IndexerOption.LOG_INDEXER::getIndexer;
+                return IndexerOption.LOG_INDEXER;
             case 1:
-                return IndexerOption.SUB_BUCKET_LOG_INDEXER::getIndexer;
+                return IndexerOption.SUB_BUCKET_LOG_INDEXER;
             case 2:
-                return IndexerOption.SUB_BUCKET_LOOKUP_INDEXER::getIndexer;
+                return IndexerOption.SUB_BUCKET_LOOKUP_INDEXER;
             case 3:
-                return IndexerOption.AUTO_SELECT::getIndexer;
+                return IndexerOption.AUTO_SELECT;
             default:
                 throw new IllegalArgumentException("Unknown indexer maker code " + code);
         }

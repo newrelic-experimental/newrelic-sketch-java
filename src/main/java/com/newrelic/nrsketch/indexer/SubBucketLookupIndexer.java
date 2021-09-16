@@ -12,7 +12,7 @@ import com.newrelic.nrsketch.DoubleFormat;
 
 public class SubBucketLookupIndexer extends SubBucketIndexer {
     // Up to this scale, we use static lookup tables, so there is no extra runtime memory cost.
-    // Above this level, each instance of SubBucketLookupIndexer costs 16 * 2^scale bytes on lookup tables.
+    // Above this scale, each instance of SubBucketLookupIndexer costs 16 * 2^scale bytes on lookup tables.
     public static final int PREFERRED_MAX_SCALE = 6;
 
     // LookupTable size at scale 6 is about 1KB. Total static table size is less than 2KB.

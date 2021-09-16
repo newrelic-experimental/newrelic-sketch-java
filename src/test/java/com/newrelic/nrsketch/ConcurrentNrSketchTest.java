@@ -46,6 +46,8 @@ public class ConcurrentNrSketchTest {
 
         final ConcurrentNrSketch sketch = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
 
+        verifySerialization(sketch, 77, 10); // Test empty sketch
+
         final ExecutorService threadPool = Executors.newFixedThreadPool(numThreads);
 
         for (int t = 0; t < numThreads; t++) {
@@ -115,7 +117,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        final NrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new Bucket[]{
+        final ConcurrentNrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
@@ -155,7 +157,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        final NrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new NrSketch.Bucket[]{
+        final ConcurrentNrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
@@ -166,7 +168,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        h1.merge(((ConcurrentNrSketch) h2).getSketch()); // Merging ConcurrentNrSketch with wrapped sketch.
+        h1.merge(h2.getSketch()); // Merging ConcurrentNrSketch with wrapped sketch.
 
         verifyHistogram(h1, 200, 0, 99, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 2), // bucket 1

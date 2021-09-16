@@ -4,6 +4,7 @@
 
 package com.newrelic.nrsketch;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,6 +44,7 @@ public class ComboNrSketch implements NrSketch {
     }
 
     // For deserialization only
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2")
     public ComboNrSketch(final int maxNumBucketsPerHistogram, final int initialScale, final List<NrSketch> histograms) {
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
@@ -269,6 +271,7 @@ public class ComboNrSketch implements NrSketch {
     //      0: empty sketch
     //      1: negative histogram only, or positive histogram only
     //      2: negative (list[0]) and positiive (list[1]) histograms
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP")
     public List<NrSketch> getHistograms() {
         return histograms;
     }

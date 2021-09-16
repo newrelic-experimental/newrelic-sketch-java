@@ -5,6 +5,7 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.indexer.IndexerOption;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Mode;
@@ -107,6 +108,7 @@ public class InsertBenchmark {
     }
 
     @Benchmark
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP")
     public Object insert() {
         sketch.insert(values[valueIndex]);
         if (++valueIndex >= values.length) {

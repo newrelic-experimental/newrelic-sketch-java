@@ -5,6 +5,7 @@
 package com.newrelic.nrsketch.indexer;
 
 import com.newrelic.nrsketch.DoubleFormat;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.Test;
 
 import java.util.function.Function;
@@ -20,6 +21,7 @@ public class BucketIndexerTest {
     public static final double FUDGE = 1 + 1e-13; // When value is on or near a bound, apply the fudge factor to make it fall on the expected side a bound for all indexers.
 
     @Test
+    @SuppressFBWarnings(value = "JUA_DONT_ASSERT_INSTANCEOF_IN_TESTS")
     public void testIndexerOptions() {
         assertTrue(IndexerOption.LOG_INDEXER.getIndexer(8) instanceof LogIndexer);
         assertTrue(IndexerOption.LOG_INDEXER.getIndexer(0) instanceof LogIndexer);
@@ -94,6 +96,7 @@ public class BucketIndexerTest {
                 case nSubBuckets - 1:
                     assertDoubleEquals(2.0, d * base, DELTA);
                     break;
+                default: // Just to keep spotbugs happy
             }
             if (i > 0) {
                 assertDoubleEquals(d, DoubleFormat.makeDouble1To2(logBounds[i - 1]) * base, DELTA);

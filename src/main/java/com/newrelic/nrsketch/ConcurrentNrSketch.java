@@ -4,6 +4,7 @@
 
 package com.newrelic.nrsketch;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
@@ -23,10 +24,12 @@ import java.util.Iterator;
 public class ConcurrentNrSketch implements NrSketch {
     protected final NrSketch sketch;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2")
     public ConcurrentNrSketch(final NrSketch sketch) {
         this.sketch = sketch;
     }
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP")
     public NrSketch getSketch() {
         return sketch;
     }
@@ -37,6 +40,11 @@ public class ConcurrentNrSketch implements NrSketch {
             return false;
         }
         return sketch.equals(((ConcurrentNrSketch) obj).sketch);
+    }
+
+    @Override
+    public int hashCode() { // Defined just to keep spotbugs happy.
+        throw new UnsupportedOperationException();
     }
 
     @Override

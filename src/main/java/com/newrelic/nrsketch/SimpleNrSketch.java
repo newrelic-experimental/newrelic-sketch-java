@@ -21,7 +21,7 @@ public class SimpleNrSketch implements NrSketch {
     public static final int DEFAULT_MAX_BUCKETS = 320; // 2.17% relative error (scale 4) for max/min contrast up to 1M
     public static final int DEFAULT_INIT_SCALE = 12; // .0085% relative error
 
-    public static final Function<Integer, ScaledExpIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT::getIndexer;
+    public static final Function<Integer, ScaledExpIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT;
 
     private WindowedCounterArray buckets;
     private final boolean bucketHoldsPositiveNumbers;
@@ -36,6 +36,57 @@ public class SimpleNrSketch implements NrSketch {
     private double max = Double.NaN;
     private double sum = 0;
 
+    public SimpleNrSketch() {
+        this(DEFAULT_MAX_BUCKETS);
+    }
+
+    public SimpleNrSketch(final int maxNumBuckets) {
+        this(maxNumBuckets, DEFAULT_INIT_SCALE);
+    }
+
+    public SimpleNrSketch(final int maxNumBuckets, final int initialScale) {
+        this(maxNumBuckets, initialScale, true, DEFAULT_INDEXER_MAKER);
+    }
+
+    public static SimpleNrSketch newNegativeHistogram(final int maxNumBuckets, final int initialScale) {
+        return new SimpleNrSketch(maxNumBuckets, initialScale, false, DEFAULT_INDEXER_MAKER);
+    }
+
+    public SimpleNrSketch(final int maxNumBuckets,
+                          final int initialScale,
+                          final boolean bucketHoldsPositiveNumbers,
+                          final Function<Integer, ScaledExpIndexer> indexerMaker) {
+        buckets = new WindowedCounterArray(maxNumBuckets);
+        this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
+        this.indexerMaker = indexerMaker;
+        this.indexer = indexerMaker.apply(initialScale);
+    }
+
+    // For deserialization only
+    public SimpleNrSketch(final WindowedCounterArray buckets,
+                          final boolean bucketHoldsPositiveNumbers,
+                          final int scale,
+                          final Function<Integer, ScaledExpIndexer> indexerMaker,
+                          final long totalCount,
+                          final long countForNegatives,
+                          final long countForZero,
+                          final double min,
+                          final double max,
+                          final double sum) {
+        this.buckets = buckets;
+        this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
+        this.indexer = indexerMaker.apply(scale);
+        this.indexerMaker = indexerMaker;
+
+        this.totalCount = totalCount;
+        this.countForNegatives = countForNegatives;
+        this.countForZero = countForZero;
+
+        this.min = min;
+        this.max = max;
+        this.sum = sum;
+    }
+
     @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof SimpleNrSketch)) {
@@ -43,13 +94,14 @@ public class SimpleNrSketch implements NrSketch {
         }
         final SimpleNrSketch other = (SimpleNrSketch) obj;
 
-        // Only scale matters. Indexer and indexerOption are not used in equals().
+        // Only scale matters. Indexer is not used in equals().
         return totalCount == other.totalCount
                 && sum == other.sum
                 && equalsWithNaN(min, other.min)
                 && equalsWithNaN(max, other.max)
                 && bucketHoldsPositiveNumbers == other.bucketHoldsPositiveNumbers
                 && getScale() == other.getScale()
+                && indexerMaker.equals(other.indexerMaker)
                 && countForNegatives == other.countForNegatives
                 && countForZero == other.countForZero
                 && buckets.equals(other.buckets);
@@ -57,6 +109,10 @@ public class SimpleNrSketch implements NrSketch {
 
     public int getScale() {
         return indexer.getScale();
+    }
+
+    public Function<Integer, ScaledExpIndexer> getIndexerMaker() {
+        return indexerMaker;
     }
 
     public static boolean equalsWithNaN(final double a, final double b) {
@@ -85,30 +141,6 @@ public class SimpleNrSketch implements NrSketch {
         builder.append(buckets.toString());
         builder.append("}");
         return builder.toString();
-    }
-
-    public SimpleNrSketch() {
-        this(DEFAULT_MAX_BUCKETS);
-    }
-
-    public SimpleNrSketch(final int maxNumBuckets) {
-        this(maxNumBuckets, DEFAULT_INIT_SCALE);
-    }
-
-    public SimpleNrSketch(final int maxNumBuckets, final int initialScale) {
-        this(maxNumBuckets, initialScale, true, DEFAULT_INDEXER_MAKER);
-    }
-
-    public static SimpleNrSketch newNegativeHistogram(final int maxNumBuckets, final int initialScale) {
-        return new SimpleNrSketch(maxNumBuckets, initialScale, false, DEFAULT_INDEXER_MAKER);
-    }
-
-    public SimpleNrSketch(final int maxNumBuckets, final int initialScale,
-                          final boolean bucketHoldsPositiveNumbers, final Function<Integer, ScaledExpIndexer> indexerMaker) {
-        buckets = new WindowedCounterArray(maxNumBuckets);
-        this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
-        this.indexerMaker = indexerMaker;
-        this.indexer = indexerMaker.apply(initialScale);
     }
 
     private long valueToIndex(final double value) {
@@ -425,6 +457,10 @@ public class SimpleNrSketch implements NrSketch {
         return totalCount;
     }
 
+    public long getCountForZero() {
+        return countForZero;
+    }
+
     @Override
     public long getCountForNegatives() {
         return countForNegatives;
@@ -452,6 +488,10 @@ public class SimpleNrSketch implements NrSketch {
 
     public int getBucketWindowSize() {
         return (int) buckets.getWindowSize();
+    }
+
+    public WindowedCounterArray getBuckets() {
+        return buckets;
     }
 
     @Override

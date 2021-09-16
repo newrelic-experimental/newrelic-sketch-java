@@ -65,15 +65,15 @@ public class InsertBenchmark {
                 break;
             case SIMPLE_LOG:
                 sketch = new SimpleNrSketch(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true,
-                        IndexerOption.LOG_INDEXER::getIndexer);
+                        IndexerOption.LOG_INDEXER);
                 break;
             case SIMPLE_LOOKUP:
                 sketch = new SimpleNrSketch(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true,
-                        IndexerOption.SUB_BUCKET_LOOKUP_INDEXER::getIndexer);
+                        IndexerOption.SUB_BUCKET_LOOKUP_INDEXER);
                 break;
             case SIMPLE_SUB_BUCKET_LOG:
                 sketch = new SimpleNrSketch(DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true,
-                        IndexerOption.SUB_BUCKET_LOG_INDEXER::getIndexer);
+                        IndexerOption.SUB_BUCKET_LOG_INDEXER);
                 break;
             case COMBO:
                 sketch = new ComboNrSketch();

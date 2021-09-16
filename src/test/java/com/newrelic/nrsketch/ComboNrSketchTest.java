@@ -15,6 +15,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE4_ERROR;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.insertData;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
 import static org.junit.Assert.assertEquals;
 
 public class ComboNrSketchTest {
@@ -74,7 +75,7 @@ public class ComboNrSketchTest {
     public void positiveFirst() {
         final ComboNrSketch histogram = new ComboNrSketch(10);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
-        verifySerialization(histogram, 7);
+        verifySerialization(histogram, 8);
         assertEquals(0, histogram.getPercentileRelativeError(), 0);
         assertEquals("maxNumBucketsPerHistogram=10, histograms.size()=0", histogram.toString());
 
@@ -82,7 +83,7 @@ public class ComboNrSketchTest {
         verifyHistogram(histogram, 1, 10, 10, new Bucket[]{
                 new Bucket(10.000000, 10, 1), // bucket 1
         });
-        verifySerialization(histogram, 91);
+        verifySerialization(histogram, 84);
         assertEquals(INITIAL_ERROR, histogram.getPercentileRelativeError(), 0);
         assertEquals("maxNumBucketsPerHistogram=10, histograms.size()=1\n" +
                 "totalCount=1, sum=10.0, min=10.0, max=10.0, bucketHoldsPositiveNumbers=true, scale=12, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=13606, indexStart=13606, indexEnd=13606, array={1,}}", histogram.toString());
@@ -92,7 +93,7 @@ public class ComboNrSketchTest {
                 new Bucket(10.0, 11.313708498984761, 1), // bucket 1
                 new Bucket(90.50966799187809, 100.0, 1), // bucket 2
         });
-        verifySerialization(histogram, 98);
+        verifySerialization(histogram, 91);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         histogram.insert(-5);
@@ -101,7 +102,7 @@ public class ComboNrSketchTest {
                 new Bucket(10.0, 11.313708498984761, 1), // bucket 2
                 new Bucket(90.50966799187809, 100.0, 1), // bucket 3
         });
-        verifySerialization(histogram, 214);
+        verifySerialization(histogram, 199);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
         assertEquals("maxNumBucketsPerHistogram=10, histograms.size()=2\ntotalCount=1, sum=-5.0, min=-5.0, max=-5.0, bucketHoldsPositiveNumbers=false, scale=12, countForNegatives=1, countForZero=0, buckets={maxSize=10, indexBase=9510, indexStart=9510, indexEnd=9510, array={1,}}\n" +
                 "totalCount=2, sum=110.0, min=10.0, max=100.0, bucketHoldsPositiveNumbers=true, scale=1, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=6, indexStart=6, indexEnd=13, array={1,0,0,0,0,0,0,1,}}", histogram.toString());
@@ -113,7 +114,7 @@ public class ComboNrSketchTest {
                 new Bucket(10.0, 11.313708498984761, 1), // bucket 3
                 new Bucket(90.50966799187809, 100.0, 1), // bucket 4
         });
-        verifySerialization(histogram, 221);
+        verifySerialization(histogram, 206);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         final double max = insertData(histogram, 1, 1000, 100);
@@ -129,7 +130,7 @@ public class ComboNrSketchTest {
                 new Bucket(256.0, 512.0, 26), // bucket 9
                 new Bucket(512.0, 990.01, 48), // bucket 10
         });
-        verifySerialization(histogram, 223);
+        verifySerialization(histogram, 208);
         assertEquals(SCALE0_ERROR, histogram.getPercentileRelativeError(), 0);
 
         histogram.insert(0, 100);
@@ -146,7 +147,7 @@ public class ComboNrSketchTest {
                 new Bucket(256.0, 512.0, 26), // bucket 10
                 new Bucket(512.0, 990.01, 48), // bucket 11
         });
-        verifySerialization(histogram, 223);
+        verifySerialization(histogram, 208);
         assertEquals(SCALE0_ERROR, histogram.getPercentileRelativeError(), 0);
     }
 
@@ -155,14 +156,14 @@ public class ComboNrSketchTest {
     public void negativeFirst() {
         final ComboNrSketch histogram = new ComboNrSketch(10);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
-        verifySerialization(histogram, 7);
+        verifySerialization(histogram, 8);
         assertEquals(0, histogram.getPercentileRelativeError(), 0);
 
         histogram.insert(-10);
         verifyHistogram(histogram, 1, -10, -10, new Bucket[]{
                 new Bucket(-10.000000, -10, 1), // bucket 1
         });
-        verifySerialization(histogram, 91);
+        verifySerialization(histogram, 84);
         assertEquals(INITIAL_ERROR, histogram.getPercentileRelativeError(), 0);
 
         histogram.insert(-100);
@@ -170,7 +171,7 @@ public class ComboNrSketchTest {
                 new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
                 new Bucket(-11.313708498984761, -10.0, 1), // bucket 2
         });
-        verifySerialization(histogram, 98);
+        verifySerialization(histogram, 91);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         histogram.insert(5);
@@ -179,7 +180,7 @@ public class ComboNrSketchTest {
                 new Bucket(-11.313708498984761, -10.0, 1), // bucket 2
                 new Bucket(5.0, 5.0, 1), // bucket 3
         });
-        verifySerialization(histogram, 214);
+        verifySerialization(histogram, 199);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         histogram.insert(50);
@@ -189,7 +190,7 @@ public class ComboNrSketchTest {
                 new Bucket(5.0, 5.656854249492381, 1), // bucket 3
                 new Bucket(45.254833995939045, 50.0, 1), // bucket 4
         });
-        verifySerialization(histogram, 221);
+        verifySerialization(histogram, 206);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         insertData(histogram, -128, 0, 256);
@@ -206,7 +207,7 @@ public class ComboNrSketchTest {
                 new Bucket(5.0, 5.656854249492381, 1), // bucket 10
                 new Bucket(45.254833995939045, 50.0, 1), // bucket 11
         });
-        verifySerialization(histogram, 227);
+        verifySerialization(histogram, 208);
         assertEquals(SCALE0_ERROR, histogram.getPercentileRelativeError(), 0);
     }
 
@@ -219,7 +220,7 @@ public class ComboNrSketchTest {
         verifyHistogram(histogram, 1, value, value, new Bucket[]{
                 new Bucket(-1000000.000000, -1000000.000000, 1), // bucket 1
         });
-        verifySerialization(histogram, 91);
+        verifySerialization(histogram, 84);
         assertEquals(INITIAL_ERROR, histogram.getPercentileRelativeError(), 0);
 
         value = -1e12;
@@ -228,7 +229,7 @@ public class ComboNrSketchTest {
                 new Bucket(-1.0E12, -9.655098358185806E11, 1), // bucket 1
                 new Bucket(-1004119.8176617863, -1000000.0, 1), // bucket 2
         });
-        verifySerialization(histogram, 410);
+        verifySerialization(histogram, 403);
         assertEquals(SCALE4_ERROR, histogram.getPercentileRelativeError(), 0);
 
         value = -1e24;
@@ -238,7 +239,7 @@ public class ComboNrSketchTest {
                 new Bucket(-1.099511627776E12, -9.245753863266149E11, 1), // bucket 2
                 new Bucket(-1048576.0, -1000000.0, 1), // bucket 3
         });
-        verifySerialization(histogram, 330);
+        verifySerialization(histogram, 323);
         assertEquals(SCALE2_ERROR, histogram.getPercentileRelativeError(), 0);
 
         value = -1e48;
@@ -249,7 +250,7 @@ public class ComboNrSketchTest {
                 new Bucket(-1.099511627776E12, -7.774721279938688E11, 1), // bucket 3
                 new Bucket(-1048576.0, -1000000.0, 1), // bucket 4
         });
-        verifySerialization(histogram, 370);
+        verifySerialization(histogram, 363);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         value = 1e6;
@@ -261,7 +262,7 @@ public class ComboNrSketchTest {
                 new Bucket(-1048576.0, -1000000.0, 1), // bucket 4
                 new Bucket(1000000.0, 1000000.0, 1), // bucket 5
         });
-        verifySerialization(histogram, 486);
+        verifySerialization(histogram, 471);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         value = 1e12;
@@ -274,7 +275,7 @@ public class ComboNrSketchTest {
                 new Bucket(1000000.0, 1004119.8176617863, 1), // bucket 5
                 new Bucket(9.655098358185806E11, 1.0E12, 1), // bucket 6
         });
-        verifySerialization(histogram, 805);
+        verifySerialization(histogram, 790);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         value = 1e24;
@@ -288,7 +289,7 @@ public class ComboNrSketchTest {
                 new Bucket(9.245753863266149E11, 1.099511627776E12, 1), // bucket 6
                 new Bucket(8.548396450010091E23, 1.0E24, 1), // bucket 7
         });
-        verifySerialization(histogram, 725);
+        verifySerialization(histogram, 710);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
 
         value = 1e48;
@@ -303,7 +304,7 @@ public class ComboNrSketchTest {
                 new Bucket(8.548396450010093E23, 1.2089258196146292E24, 1), // bucket 7
                 new Bucket(7.3075081866545146E47, 1.0E48, 1), // bucket 8
         });
-        verifySerialization(histogram, 765);
+        verifySerialization(histogram, 750);
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
     }
 
@@ -587,10 +588,6 @@ public class ComboNrSketchTest {
         verifyPercentile(histogram, new double[]{-1, 0, 0, 100, 100, 110}, new double[]{min, min, min, max, max, max});
 
         verifyPercentile(histogram, new double[]{50, 90, 95, 99}, new double[]{Double.NaN, Double.NaN, Double.NaN, Double.NaN});
-    }
-
-    private void verifySerialization(final ComboNrSketch histogram, final int expectedBufferSize) {
-        // TODO: test protobuf
     }
 
     private static ComboNrSketch testComboHistogram(final int numBuckets, final double from, final double to, final int numDataPoints, final NrSketch.Bucket[] expectedBuckets) {

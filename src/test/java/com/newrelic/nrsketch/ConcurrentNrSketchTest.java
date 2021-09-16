@@ -18,6 +18,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE4_ERROR;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.insertData;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
@@ -43,7 +44,9 @@ public class ConcurrentNrSketchTest {
         final long valuesPerThread = 10000;
         final long expectedCount = valuesPerThread * numThreads;
 
-        final NrSketch sketch = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
+        final ConcurrentNrSketch sketch = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
+
+        verifySerialization(sketch, 77, 10); // Test empty sketch
 
         final ExecutorService threadPool = Executors.newFixedThreadPool(numThreads);
 
@@ -75,6 +78,8 @@ public class ConcurrentNrSketchTest {
         assertEquals(1.49985E8, sketch.getSum(), 0);
 
         assertEquals(SCALE4_ERROR, sketch.getPercentileRelativeError(), 0);
+
+        verifySerialization(sketch, 344, 352);
     }
 
     @Test
@@ -90,17 +95,18 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         };
 
-        final NrSketch histogram = testConcurrentHistogram(10, 0, 100, 100, buckets);
+        final ConcurrentNrSketch histogram = testConcurrentHistogram(10, 0, 100, 100, buckets);
 
         // Test that we can iterate inside a synchronized block.
         synchronized (histogram) {
             verifyHistogram(histogram, 100, 0, 99, buckets);
+            verifySerialization(histogram, 84, 92);
         }
     }
 
     @Test
     public void testMergeSameClass() {
-        final NrSketch h1 = testConcurrentHistogram(10, 0, 100, 100, new Bucket[]{
+        final ConcurrentNrSketch h1 = testConcurrentHistogram(10, 0, 100, 100, new Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
@@ -111,7 +117,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        final NrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new Bucket[]{
+        final ConcurrentNrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
@@ -134,11 +140,13 @@ public class ConcurrentNrSketchTest {
                 new Bucket(32.0, 64.0, 64), // bucket 7
                 new Bucket(64.0, 99.0, 72), // bucket 8
         });
+
+        verifySerialization(h1, 84, 92);
     }
 
     @Test
     public void testMergeDifferentClass() {
-        final NrSketch h1 = testConcurrentHistogram(10, 0, 100, 100, new NrSketch.Bucket[]{
+        final ConcurrentNrSketch h1 = testConcurrentHistogram(10, 0, 100, 100, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
@@ -149,7 +157,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        final NrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new NrSketch.Bucket[]{
+        final ConcurrentNrSketch h2 = testConcurrentHistogram(10, 0, 100, 100, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
@@ -160,7 +168,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        h1.merge(((ConcurrentNrSketch) h2).getSketch()); // Merging ConcurrentNrSketch with wrapped sketch.
+        h1.merge(h2.getSketch()); // Merging ConcurrentNrSketch with wrapped sketch.
 
         verifyHistogram(h1, 200, 0, 99, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 2), // bucket 1
@@ -172,10 +180,22 @@ public class ConcurrentNrSketchTest {
                 new Bucket(32.0, 64.0, 64), // bucket 7
                 new Bucket(64.0, 99.0, 72), // bucket 8
         });
+
+        verifySerialization(h1, 84, 92);
     }
 
-    private NrSketch testConcurrentHistogram(final int numBuckets, final double from, final double to, final int numDataPoints, final NrSketch.Bucket[] expectedBuckets) {
-        final NrSketch histogram = new ConcurrentNrSketch(sketchMaker.getSketch(numBuckets));
+    public static void verifySerialization(final ConcurrentNrSketch sketch, final int expectedSimpleNrSketchBufferSize, final int expectedComboSketchBufferSize) {
+        if (sketch.getSketch() instanceof SimpleNrSketch) {
+            SimpleNrSketchTest.verifySerialization(sketch, expectedSimpleNrSketchBufferSize);
+        } else if (sketch.getSketch() instanceof ComboNrSketch) {
+            SimpleNrSketchTest.verifySerialization(sketch, expectedComboSketchBufferSize);
+        } else {
+            throw new IllegalArgumentException("Unknown subSketch class " + sketch.getSketch().getClass().getName());
+        }
+    }
+
+    private ConcurrentNrSketch testConcurrentHistogram(final int numBuckets, final double from, final double to, final int numDataPoints, final NrSketch.Bucket[] expectedBuckets) {
+        final ConcurrentNrSketch histogram = new ConcurrentNrSketch(sketchMaker.getSketch(numBuckets));
         final double max = insertData(histogram, from, to, numDataPoints);
         verifyHistogram(histogram, numDataPoints, from, max, expectedBuckets);
         return histogram;

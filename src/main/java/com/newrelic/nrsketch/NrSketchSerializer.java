@@ -112,7 +112,7 @@ public class NrSketchSerializer {
                 + WindowedCounterArraySerializer.getWindowedCounterArraySerializeBufferSize(sketch.getBuckets());
     }
 
-    public static NrSketch deserializeSimpleNrSketch(final ByteBuffer buffer) {
+    public static SimpleNrSketch deserializeSimpleNrSketch(final ByteBuffer buffer) {
         final short version = buffer.getShort();
         if (version != SIMPLE_NRSKETCH_VERSION) {
             throw new RuntimeException("Unknown SimpleNrSketch version " + version);
@@ -125,7 +125,7 @@ public class NrSketchSerializer {
 
         final boolean bucketHoldsPositiveNumbers = buffer.get() == 1;
         final int scale = buffer.get();
-        final Function<Integer, ScaledExpIndexer> indexerMaker = getIndexerMakeFromCode(buffer.get());
+        final Function<Integer, ScaledExpIndexer> indexerMaker = getIndexerMakerFromCode(buffer.get());
 
         final long countForNegatives = buffer.getLong();
         final long countForZero = buffer.getLong();
@@ -161,7 +161,7 @@ public class NrSketchSerializer {
         }
     }
 
-    static Function<Integer, ScaledExpIndexer> getIndexerMakeFromCode(final byte code) {
+    static Function<Integer, ScaledExpIndexer> getIndexerMakerFromCode(final byte code) {
         switch (code) {
             case 0:
                 return IndexerOption.LOG_INDEXER;
@@ -212,7 +212,7 @@ public class NrSketchSerializer {
         return size;
     }
 
-    public static NrSketch deserializeComboNrSketch(final ByteBuffer buffer) {
+    public static ComboNrSketch deserializeComboNrSketch(final ByteBuffer buffer) {
         final short version = buffer.getShort();
         if (version != COMBO_NRSKETCH_VERSION) {
             throw new RuntimeException("Unknown ComboNrSketch version " + version);
@@ -248,7 +248,7 @@ public class NrSketchSerializer {
                 + getNrSketchSerializeBufferSize(sketch.getSketch());
     }
 
-    public static NrSketch deserializeConcurrentNrSketch(final ByteBuffer buffer) {
+    public static ConcurrentNrSketch  deserializeConcurrentNrSketch(final ByteBuffer buffer) {
         final short version = buffer.getShort();
         if (version != CONCURRENT_NRSKETCH_VERSION) {
             throw new RuntimeException("Unknown ConcurrentNrSketch version " + version);

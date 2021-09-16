@@ -124,7 +124,7 @@ public class SimpleNrSketchTest {
         assertDoubleEquals(expectedRelativeError, histogram.getPercentileRelativeError(), ERROR_DELTA);
     }
 
-    public static void verifySerialization(final NrSketch sketch, final int expectedBufferSize) {
+    public static NrSketch verifySerialization(final NrSketch sketch, final int expectedBufferSize) {
         final ByteBuffer buffer = NrSketchSerializer.serializeNrSketch(sketch);
         final NrSketch readBack = NrSketchSerializer.deserializeNrSketch(buffer);
 
@@ -133,6 +133,8 @@ public class SimpleNrSketchTest {
         assertEquals(expectedBufferSize, buffer.capacity());
 
         assertEquals(sketch, readBack);
+
+        return readBack;
     }
 
     static final double INITIAL_ERROR = 8.4612692737477E-5;

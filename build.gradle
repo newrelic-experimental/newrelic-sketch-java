@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'idea'
     id 'me.champeau.gradle.jmh' version '0.5.0'
+    id 'com.github.spotbugs' version '4.7.5'
 }
 
 repositories {
@@ -9,11 +10,22 @@ repositories {
 }
 
 dependencies {
-    compile "org.jetbrains:annotations:$annotationsVersion"
+    compile "org.jetbrains:annotations:$jetBrainsAnnotationsVersion"
+    compile "com.github.spotbugs:spotbugs-annotations:$spotbugsAnnotationsVersion"
 
     testCompile "junit:junit:$junitVersion"
 }
 
 jmh {
     jmhVersion = "$jmhVersion"
+}
+
+spotbugsMain.reports {
+    html.enabled = true
+}
+spotbugsTest.reports {
+    html.enabled = true
+}
+spotbugsJmh.reports {
+    html.enabled = true
 }

@@ -6,6 +6,7 @@ package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
@@ -87,6 +88,7 @@ public class SimpleNrSketch implements NrSketch {
         this.sum = sum;
     }
 
+    @SuppressFBWarnings(value = "FE_FLOATING_POINT_EQUALITY")
     @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof SimpleNrSketch)) {
@@ -120,7 +122,7 @@ public class SimpleNrSketch implements NrSketch {
     }
 
     @Override
-    public int hashCode() { // Defined just to keep findbugs happy.
+    public int hashCode() { // Defined just to keep spotbugs happy.
         throw new UnsupportedOperationException();
     }
 

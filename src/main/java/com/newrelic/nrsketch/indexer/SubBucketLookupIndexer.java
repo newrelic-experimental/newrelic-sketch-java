@@ -118,22 +118,26 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
     }
 
     // Returns index where array[index] <= key < array[index + 1]
+    // Returns -1 if key < array[0]
+    // Returns array.length - 1 if key >= array[length - 1]
     public static int binarySearch(final long[] array, final long key) {
-        int low = 0;
-        int high = array.length - 1;
+        int from = 0;              // inclusive
+        int to = array.length - 1; // inclusive
 
-        while (low <= high) {
-            final int mid = (low + high) >>> 1;
-            final long midVal = array[mid];
+        while (from <= to) {
+            final int middle = (from + to) >>> 1; // Use ">>>" to handle "+" overflow.
+            final long value = array[middle];
 
-            if (midVal < key) {
-                low = mid + 1;
-            } else if (midVal > key) {
-                high = mid - 1;
-            } else {
-                return mid; // key found
+            if (key < value) {
+                to = middle - 1;   // Search lower half.
+            } else if (key == value) {
+                return middle;     // Exact match
+            } else { // key > value
+                from = middle + 1; // Search higher half
             }
         }
-        return low - 1;  // key not found.
+        // Returns the closest match index, or
+        // -1 (key below array), length - 1 (key above array)
+        return from - 1;
     }
 }

@@ -89,13 +89,13 @@ public class WindowedCounterArraySerializer {
     }
 
     public static long readVarint64(final ByteBuffer buffer) {
-        int shift = 0;
         long result = 0L;
+        int shift = 0;
 
         while (true) {
-            final byte b1 = buffer.get();
-            result |= (long) (b1 & 127) << shift;
-            if ((b1 & 128) != 128) {
+            final byte b = buffer.get();
+            result |= (long) (b & 127) << shift;
+            if ((b & 128) != 128) {
                 break;
             }
             shift += 7;

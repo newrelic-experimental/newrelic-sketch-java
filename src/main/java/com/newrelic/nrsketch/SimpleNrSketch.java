@@ -335,12 +335,12 @@ public class SimpleNrSketch implements NrSketch {
 
     // BucketIterator.next() reuses Bucket object. Caller must read the bucket before the next call.
     //
-    private class BucketIterator implements Iterator<Bucket> {
-        private IteratorState state;
-        private long cursor;
-        private final Bucket bucket;
+    private class PositiveBucketBucketIterator implements Iterator<Bucket> {
+        protected IteratorState state;
+        protected long cursor;
+        protected final Bucket bucket;
 
-        public BucketIterator() {
+        public PositiveBucketBucketIterator() {
             if (Double.isNaN(min)) {
                 state = IteratorState.NO_MORE_BUCKETS;
             } else if (min < 0) {
@@ -405,38 +405,66 @@ public class SimpleNrSketch implements NrSketch {
         }
     }
 
-    // For simplicity, this iterator assumes there are only negative numbers.
-    // It iterates from buckets.getIndexEnd() to getIndexStart() so that negative numbers with higher absolute value
-    // (ie. lower logical value) are returned first.
-    private class NegativeBucketIterator implements Iterator<Bucket> {
-        private long cursor;
-        private final Bucket bucket;
+    private class NegativeBucketIterator extends PositiveBucketBucketIterator {
 
         public NegativeBucketIterator() {
-            if (countForNegatives != totalCount) {
-                throw new RuntimeException("countForNegatives " + countForNegatives + " != totalCount " + totalCount);
-            }
+            // Iterates from buckets.getIndexEnd() to getIndexStart() so that negative numbers with higher absolute value
+            // (ie. lower logical value) are returned first.
             cursor = buckets.getIndexEnd();
-            bucket = new Bucket(0, 0, 0);
         }
 
         @Override
         public boolean hasNext() {
-            return cursor != WindowedCounterArray.NULL_INDEX && cursor >= buckets.getIndexStart();
+            switch (state) {
+                case NEGATIVE:
+                    return cursor != WindowedCounterArray.NULL_INDEX && cursor >= buckets.getIndexStart();
+                case ZERO:
+                case POSITIVE:
+                    return true;
+                case NO_MORE_BUCKETS:
+                    return false;
+                default:
+                    throw new RuntimeException("Unknown state " + state);
+            }
         }
 
         @Override
         public Bucket next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException("NegativeSimpleNrSketch.BucketIterator: no more elements for next()");
+            switch (state) {
+                case NEGATIVE:
+                    do {
+                        bucket.startValue = cursor == buckets.getIndexEnd() ? min : indexToBucketEnd(cursor);
+                        bucket.endValue = cursor == buckets.getIndexStart() ? max : indexToBucketStart(cursor);
+                        bucket.count = buckets.get(cursor);
+                        cursor--;
+                    } while (bucket.count == 0 && cursor >= buckets.getIndexStart());
+
+                    if (cursor < buckets.getIndexStart()) {
+                        state = countForZero > 0 ? IteratorState.ZERO :
+                                (getCountForPositives() > 0 ? IteratorState.POSITIVE : IteratorState.NO_MORE_BUCKETS);
+                    }
+                    return bucket;
+                case ZERO:
+                    bucket.startValue = 0;
+                    bucket.endValue = 0;
+                    bucket.count = countForZero;
+                    state = getCountForPositives() > 0 ? IteratorState.POSITIVE : IteratorState.NO_MORE_BUCKETS;
+                    return bucket;
+                case POSITIVE:
+                    bucket.endValue = max;
+                    if (min > 0) {
+                        bucket.startValue = min;
+                    } else {
+                        bucket.startValue = 0;
+                    }
+                    bucket.count = getCountForPositives();
+                    state = IteratorState.NO_MORE_BUCKETS;
+                    return bucket;
+                case NO_MORE_BUCKETS:
+                    throw new NoSuchElementException("SimpleNrSketch.BucketIterator: no more elements for next()");
+                default:
+                    throw new RuntimeException("Unknown state " + state);
             }
-            do {
-                bucket.startValue = cursor == buckets.getIndexEnd() ? min : indexToBucketEnd(cursor);
-                bucket.endValue = cursor == buckets.getIndexStart() ? max : indexToBucketStart(cursor);
-                bucket.count = buckets.get(cursor);
-                cursor--;
-            } while (bucket.count == 0 && cursor >= buckets.getIndexStart());
-            return bucket;
         }
     }
 
@@ -470,6 +498,10 @@ public class SimpleNrSketch implements NrSketch {
         return countForNegatives;
     }
 
+    public long getCountForPositives() {
+        return totalCount - countForZero - countForNegatives;
+    }
+
     @Override
     public double getMin() {
         return min;
@@ -501,6 +533,6 @@ public class SimpleNrSketch implements NrSketch {
     @Override
     @NotNull
     public Iterator<Bucket> iterator() {
-        return bucketHoldsPositiveNumbers ? new BucketIterator() : new NegativeBucketIterator();
+        return bucketHoldsPositiveNumbers ? new PositiveBucketBucketIterator() : new NegativeBucketIterator();
     }
 }

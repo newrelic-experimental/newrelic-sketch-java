@@ -169,8 +169,7 @@ public class SimpleNrSketch implements NrSketch {
         sum += d * instances;
         totalCount += instances;
 
-        // This condition covers 0 and subnormal numbers.
-        if ((Double.doubleToRawLongBits(d) & DoubleFormat.EXPONENT_MASK) == 0) {
+        if (DoubleFormat.isSubnormalOrZero(d)) {
             countForZero += instances;
             return;
         }
@@ -463,7 +462,6 @@ public class SimpleNrSketch implements NrSketch {
         return countForZero;
     }
 
-    @Override
     public long getCountForNegatives() {
         return countForNegatives;
     }

@@ -64,4 +64,8 @@ public class DoubleFormat {
     public static double makeDouble1To2(final long mantissa) {
         return makeDouble(POSITIVE_SIGN, EXPONENT_BIAS, mantissa);
     }
+
+    public static boolean isSubnormalOrZero(final double d) {
+        return (Double.doubleToRawLongBits(d) & DoubleFormat.EXPONENT_MASK) == 0;
+    }
 }

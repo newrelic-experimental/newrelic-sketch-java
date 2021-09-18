@@ -106,7 +106,9 @@ public class ComboNrSketch implements NrSketch {
 
     @Override
     public void insert(final double d, final long instances) {
-        if (d >= 0) {
+        // Send subnormal numbers to positive histogram, regardless of sign,
+        // so that only the positive histogram has a zero count.
+        if (d >= 0 || DoubleFormat.isSubnormalOrZero(d)) {
             getOrCreatePositveHistogram().insert(d, instances);
         } else {
             getOrCreateNegativeHistogram().insert(d, instances);
@@ -207,11 +209,6 @@ public class ComboNrSketch implements NrSketch {
     @Override
     public long getCount() {
         return mergeField(0L, NrSketch::getCount, Long::sum);
-    }
-
-    @Override
-    public long getCountForNegatives() {
-        return mergeField(0L, NrSketch::getCountForNegatives, Long::sum);
     }
 
     @Override

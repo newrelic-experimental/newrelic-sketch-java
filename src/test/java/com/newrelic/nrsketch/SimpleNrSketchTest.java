@@ -95,7 +95,7 @@ public class SimpleNrSketchTest {
                         assertDoubleEquals(base1, bucket1End / bucket1Start, delta);
                     }
                     if (bucket2Start > Double.MIN_NORMAL) {
-                        assertDoubleEquals(base2, bucket2End/ bucket2Start, delta);
+                        assertDoubleEquals(base2, bucket2End / bucket2Start, delta);
                     }
 
                     assertDoubleGreater(bucket1Start, bucket2Start, delta);
@@ -643,6 +643,21 @@ public class SimpleNrSketchTest {
     }
 
     @Test
+    public void testSubnormals() {
+        final SimpleNrSketch h1 = new SimpleNrSketch(10);
+
+        final double positiveSubnormal = DoubleFormat.makeDouble(0, 0, 100);
+        assertTrue(positiveSubnormal > 0 && positiveSubnormal < Double.MIN_NORMAL);
+
+        final double negativeSubnormal = DoubleFormat.makeDouble(1, 0, 200);
+        assertTrue(negativeSubnormal < 0 && negativeSubnormal > Double.MIN_NORMAL * -1);
+
+        h1.insert(positiveSubnormal);
+        assertEquals(1, h1.getCountForZero());
+        //verifyHistogram(h1, 1, positiveSubnormal, positiveSubnormal, EMPTY_BUCKET_LIST);
+    }
+
+    @Test
     public void testNegatives() {
         final SimpleNrSketch h1 = new SimpleNrSketch(10);
         h1.insert(-10);
@@ -812,9 +827,9 @@ public class SimpleNrSketchTest {
     }
 
     public static void assertBucketEquals(final Bucket a, final Bucket b, final double delta) {
-        assertDoubleEquals(a.startValue , b.startValue, delta);
-        assertDoubleEquals(a.endValue , b.endValue, delta);
-        assertLongEquals(a.count , b.count, 0);
+        assertDoubleEquals(a.startValue, b.startValue, delta);
+        assertDoubleEquals(a.endValue, b.endValue, delta);
+        assertLongEquals(a.count, b.count, 0);
     }
 
     static void verifyHistogram(final NrSketch histogram, final long expectedCount, final double expectedMin, final double expectedMax, final Bucket[] expectedBuckets) {

@@ -70,8 +70,6 @@ public class ConcurrentNrSketchTest {
 
         assertEquals(320, sketch.getMaxNumOfBuckets());
 
-        assertEquals(0, sketch.getCountForNegatives());
-
         assertEquals(0, sketch.getMin(), 0);
         assertEquals(valuesPerThread - 1, sketch.getMax(), 0);
 

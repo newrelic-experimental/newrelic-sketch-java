@@ -27,9 +27,6 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
     // Returns total count across all buckets
     long getCount();
 
-    // Returns count for negative numbers
-    long getCountForNegatives();
-
     // Returns min of inserted values. Returns NaN if histogram is empty.
     double getMin();
 

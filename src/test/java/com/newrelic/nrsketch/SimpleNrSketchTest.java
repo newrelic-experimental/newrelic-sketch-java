@@ -654,7 +654,54 @@ public class SimpleNrSketchTest {
 
         h1.insert(positiveSubnormal);
         assertEquals(1, h1.getCountForZero());
-        //verifyHistogram(h1, 1, positiveSubnormal, positiveSubnormal, EMPTY_BUCKET_LIST);
+        verifyHistogram(h1, 1, 0, 0, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+        });
+
+        h1.insert(negativeSubnormal);
+        assertEquals(2, h1.getCountForZero());
+        verifyHistogram(h1, 2, 0, 0, new Bucket[]{
+                new Bucket(0.0, 0.0, 2), // bucket 1
+        });
+
+        h1.insert(0);
+        assertEquals(3, h1.getCountForZero());
+        verifyHistogram(h1, 3, 0, 0, new Bucket[]{
+                new Bucket(0.0, 0.0, 3), // bucket 1
+        });
+
+        h1.insert(10);
+        assertEquals(3, h1.getCountForZero());
+        verifyHistogram(h1, 4, 0, 10, new Bucket[]{
+                new Bucket(0.0, 0.0, 3), // bucket 1
+                new Bucket(9.998955127333458, 10.0, 1), // bucket 2
+        });
+
+        h1.insert(20);
+        assertEquals(3, h1.getCountForZero());
+        verifyHistogram(h1, 5, 0, 20, new Bucket[]{
+                new Bucket(0.0, 0.0, 3), // bucket 1
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
+                new Bucket(19.027313840043536, 20.0, 1), // bucket 3
+        });
+
+        h1.insert(-50);
+        assertEquals(3, h1.getCountForZero());
+        verifyHistogram(h1, 6, -50, 20, new Bucket[]{
+                new Bucket(-50.0, 0.0, 1), // bucket 1
+                new Bucket(0.0, 0.0, 3), // bucket 2
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 3
+                new Bucket(19.027313840043536, 20.0, 1), // bucket 4
+        });
+
+        h1.insert(-40);
+        assertEquals(3, h1.getCountForZero());
+        verifyHistogram(h1, 7, -50, 20, new Bucket[]{
+                new Bucket(-50.0, 0.0, 2), // bucket 1
+                new Bucket(0.0, 0.0, 3), // bucket 2
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 3
+                new Bucket(19.027313840043536, 20.0, 1), // bucket 4
+        });
     }
 
     @Test

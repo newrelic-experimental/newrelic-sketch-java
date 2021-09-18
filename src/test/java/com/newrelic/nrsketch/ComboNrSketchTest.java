@@ -17,6 +17,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ComboNrSketchTest {
     private static final double SCALE2_ERROR = 0.08642723372588978;
@@ -209,6 +210,62 @@ public class ComboNrSketchTest {
         });
         verifySerialization(histogram, 208);
         assertEquals(SCALE0_ERROR, histogram.getPercentileRelativeError(), 0);
+    }
+
+    @Test
+    public void testSubnormals() {
+        final ComboNrSketch h1 = new ComboNrSketch(10);
+
+        final double positiveSubnormal = DoubleFormat.makeDouble(0, 0, 100);
+        assertTrue(positiveSubnormal > 0 && positiveSubnormal < Double.MIN_NORMAL);
+
+        final double negativeSubnormal = DoubleFormat.makeDouble(1, 0, 200);
+        assertTrue(negativeSubnormal < 0 && negativeSubnormal > Double.MIN_NORMAL * -1);
+
+        h1.insert(positiveSubnormal);
+        verifyHistogram(h1, 1, 0, 0, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+        });
+
+        h1.insert(negativeSubnormal);
+        verifyHistogram(h1, 2, 0, 0, new Bucket[]{
+                new Bucket(0.0, 0.0, 2), // bucket 1
+        });
+
+        h1.insert(0);
+        verifyHistogram(h1, 3, 0, 0, new Bucket[]{
+                new Bucket(0.0, 0.0, 3), // bucket 1
+        });
+
+        h1.insert(10);
+        verifyHistogram(h1, 4, 0, 10, new Bucket[]{
+                new Bucket(0.0, 0.0, 3), // bucket 1
+                new Bucket(9.998955127333458, 10.0, 1), // bucket 2
+        });
+
+        h1.insert(20);
+        verifyHistogram(h1, 5, 0, 20, new Bucket[]{
+                new Bucket(0.0, 0.0, 3), // bucket 1
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
+                new Bucket(19.027313840043536, 20.0, 1), // bucket 3
+        });
+
+        h1.insert(-50);
+        verifyHistogram(h1, 6, -50, 20, new Bucket[]{
+                new Bucket(-50.0, -50.0, 1), // bucket 1
+                new Bucket(0.0, 0.0, 3), // bucket 2
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 3
+                new Bucket(19.027313840043536, 20.0, 1), // bucket 4
+        });
+
+        h1.insert(-40);
+        verifyHistogram(h1, 7, -50, 20, new Bucket[]{
+                new Bucket(-50.0, -49.350746413054104, 1), // bucket 1
+                new Bucket(-41.49886574883231, -40.0, 1), // bucket 2
+                new Bucket(0.0, 0.0, 3), // bucket 3
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 4
+                new Bucket(19.027313840043536, 20.0, 1), // bucket 5
+        });
     }
 
     @Test

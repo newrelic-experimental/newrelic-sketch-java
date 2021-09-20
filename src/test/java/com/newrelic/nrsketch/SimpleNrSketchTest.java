@@ -788,7 +788,7 @@ public class SimpleNrSketchTest {
     }
 
     @Test
-    public void negativeHistogramSmallDataSet() {
+    public void negativeHistogramStartingFromNegative() {
         final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10, TEST_INIT_SCALE);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
         verifySerialization(histogram, 75);
@@ -812,6 +812,117 @@ public class SimpleNrSketchTest {
         assertEquals(8, histogram.getBucketWindowSize());
 
         assertEquals("totalCount=2, sum=-110.0, min=-100.0, max=-10.0, bucketHoldsPositiveNumbers=false, scale=1, countForNegatives=2, countForZero=0, buckets={maxSize=10, indexBase=6, indexStart=6, indexEnd=13, array={1,0,0,0,0,0,0,1,}}", histogram.toString());
+
+        histogram.insert(0);
+        verifyHistogram(histogram, 3, -100, 0, new Bucket[]{
+                new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
+                new Bucket(-11.313708498984761, -8.0, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+        });
+        verifySerialization(histogram, 83);
+
+        histogram.insert(50);
+        verifyHistogram(histogram, 4, -100, 50, new Bucket[]{
+                new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
+                new Bucket(-11.313708498984761, -8.0, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+                new Bucket(0.0, 50.0, 1), // bucket 4
+        });
+        verifySerialization(histogram, 83);
+
+        histogram.insert(40);
+        verifyHistogram(histogram, 5, -100, 50, new Bucket[]{
+                new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
+                new Bucket(-11.313708498984761, -8.0, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+                new Bucket(0.0, 50.0, 2), // bucket 4
+        });
+        verifySerialization(histogram, 83);
+
+        histogram.insert(200);
+        verifyHistogram(histogram, 6, -100, 200, new Bucket[]{
+                new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
+                new Bucket(-11.313708498984761, -8.0, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+                new Bucket(0.0, 200.0, 3), // bucket 4
+        });
+        verifySerialization(histogram, 83);
+    }
+
+    @Test
+    public void negativeHistogramSkippingZero() {
+        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10, TEST_INIT_SCALE);
+
+        histogram.insert(-100);
+        verifyHistogram(histogram, 1, -100, -100, new Bucket[]{
+                new Bucket(-100.0, -100.0, 1), // bucket 1
+        });
+        verifySerialization(histogram, 76);
+
+        histogram.insert(-10);
+        verifyHistogram(histogram, 2, -100, -10, new Bucket[]{
+                new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
+                new Bucket(-11.313708498984761, -10.0, 1), // bucket 2
+        });
+        verifySerialization(histogram, 83);
+
+        histogram.insert(10);
+        verifyHistogram(histogram, 3, -100, 10, new Bucket[]{
+                new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
+                new Bucket(-11.313708498984761, -8.0, 1), // bucket 2
+                new Bucket(0.0, 10.0, 1), // bucket 3
+        });
+        verifySerialization(histogram, 83);
+
+        histogram.insert(100);
+        verifyHistogram(histogram, 4, -100, 100, new Bucket[]{
+                new Bucket(-100.0, -90.50966799187809, 1), // bucket 1
+                new Bucket(-11.313708498984761, -8.0, 1), // bucket 2
+                new Bucket(0.0, 100.0, 2), // bucket 3
+        });
+        verifySerialization(histogram, 83);
+    }
+
+    @Test
+    public void negativeHistogramStartingFromZero() {
+        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10, TEST_INIT_SCALE);
+
+        histogram.insert(0);
+        verifyHistogram(histogram, 1, 0, 0, new Bucket[]{
+                new Bucket(0, 0, 1), // bucket 1
+        });
+        verifySerialization(histogram, 75);
+
+        histogram.insert(10);
+        verifyHistogram(histogram, 2, 0, 10, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(0.0, 10.0, 1), // bucket 2
+        });
+        verifySerialization(histogram, 75);
+
+        histogram.insert(100);
+        verifyHistogram(histogram, 3, 0, 100, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(0.0, 100.0, 2), // bucket 2
+        });
+        verifySerialization(histogram, 75);
+    }
+
+    @Test
+    public void negativeHistogramStartingFromPositive() {
+        final SimpleNrSketch histogram = SimpleNrSketch.newNegativeHistogram(10, TEST_INIT_SCALE);
+
+        histogram.insert(100);
+        verifyHistogram(histogram, 1, 100, 100, new Bucket[]{
+                new Bucket(100.0, 100.0, 1), // bucket 1
+        });
+        verifySerialization(histogram, 75);
+
+        histogram.insert(10);
+        verifyHistogram(histogram, 2, 10, 100, new Bucket[]{
+                new Bucket(10.0, 100.0, 2), // bucket 1
+        });
+        verifySerialization(histogram, 75);
     }
 
     private static SimpleNrSketch testNegativeHistogram(final int numBuckets, final double from, final double to, final int numDataPoints, final Bucket[] expectedBuckets) {
@@ -833,7 +944,6 @@ public class SimpleNrSketchTest {
         final Iterator<Bucket> iterator = histogram.iterator();
         int i = 1;
         double maxRelativeError = Double.NaN;
-        final boolean checkErrorOnNegatives = !(histogram instanceof SimpleNrSketch && ((SimpleNrSketch) histogram).isBucketHoldsPositiveNumbers());
 
         while (iterator.hasNext()) {
             final Bucket bucket = iterator.next();
@@ -845,7 +955,7 @@ public class SimpleNrSketchTest {
             final double bucketMiddle = (bucket.endValue + bucket.startValue) / 2;
             if (bucket.startValue > 0) {
                 relativeError = bucketWidth / 2 / bucketMiddle;
-            } else if (bucket.endValue < 0 && checkErrorOnNegatives) {
+            } else if (bucket.endValue < 0) {
                 relativeError = bucketWidth / 2 / -bucketMiddle;
             } else {
                 relativeError = Double.NaN;
@@ -866,7 +976,10 @@ public class SimpleNrSketchTest {
         System.out.println("min=" + histogram.getMin() + " max=" + histogram.getMax()
                 + " reportedError=" + reportedRelativeError + " actualError=" + maxRelativeError);
 
-        if (maxRelativeError > reportedRelativeError * ERROR_DELTA) {
+        if (!(histogram instanceof SimpleNrSketch &&
+                (((SimpleNrSketch) histogram).isBucketHoldsPositiveNumbers() && histogram.getMin() < 0
+                        || !((SimpleNrSketch) histogram).isBucketHoldsPositiveNumbers() && histogram.getMax() > 0))
+                && maxRelativeError > reportedRelativeError * ERROR_DELTA) {
             throw new RuntimeException("maxRelativeError " + maxRelativeError + " > reportedRelativeError " + reportedRelativeError);
         }
 
@@ -885,12 +998,22 @@ public class SimpleNrSketchTest {
         final Iterator<Bucket> iterator = histogram.iterator();
         int index = 0;
         int countSum = 0;
+        Bucket prevBucket = null;
 
         while (iterator.hasNext()) {
             final Bucket bucket = iterator.next();
             assertBucketEquals(expectedBuckets[index], bucket, DELTA);
             index++;
             countSum += bucket.count;
+
+            assertTrue(bucket.endValue >= bucket.startValue);
+            assertTrue(bucket.count >= 0);
+
+            if (prevBucket != null) {
+                assertTrue(bucket.startValue >= prevBucket.endValue);
+            }
+
+            prevBucket = bucket.makeCopy();
         }
 
         assertEquals(expectedBuckets.length, index);

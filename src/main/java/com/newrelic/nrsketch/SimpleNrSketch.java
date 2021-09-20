@@ -434,7 +434,7 @@ public class SimpleNrSketch implements NrSketch {
                 case NEGATIVE:
                     do {
                         bucket.startValue = cursor == buckets.getIndexEnd() ? min : indexToBucketEnd(cursor);
-                        bucket.endValue = cursor == buckets.getIndexStart() ? max : indexToBucketStart(cursor);
+                        bucket.endValue = cursor == buckets.getIndexStart() && max < 0 ? max : indexToBucketStart(cursor);
                         bucket.count = buckets.get(cursor);
                         cursor--;
                     } while (bucket.count == 0 && cursor >= buckets.getIndexStart());

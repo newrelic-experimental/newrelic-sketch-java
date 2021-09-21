@@ -78,16 +78,4 @@ public class DoubleFormatTest {
         assertFalse(d < 0);
         assertFalse(d > 0);
     }
-
-    @Test
-    public void testIsSubnormalOrZero() {
-        assertTrue(DoubleFormat.isSubnormalOrZero(0));
-        assertTrue(DoubleFormat.isSubnormalOrZero(-0.0));
-
-        assertTrue(DoubleFormat.isSubnormalOrZero(Double.MIN_VALUE));
-        assertTrue(DoubleFormat.isSubnormalOrZero(Double.MIN_VALUE * -1));
-
-        assertFalse(DoubleFormat.isSubnormalOrZero(Double.MIN_NORMAL));
-        assertFalse(DoubleFormat.isSubnormalOrZero(Double.MIN_NORMAL * -1));
-    }
 }

@@ -26,24 +26,20 @@ public class ExponentIndexer extends ScaledExpIndexer {
     @Override
     public long getBucketIndex(final double value) {
         final long asLong = Double.doubleToRawLongBits(value);
-
-        // Combine the uncommon case of zero and subnormals into one inexpensive check.
-        if (DoubleFormat.isSubnormalOrZeroFromLong(asLong)) {
-            if (value == 0) {
-                throw new IllegalArgumentException("ExponentIndexer cannot handle zero");
-            }
-            final int extraExponent = Long.numberOfLeadingZeros(asLong << MANTISSA_SHIFT) + 1;
-            final long exponent = Double.MIN_EXPONENT - extraExponent; // Normalized
-            return exponent >> exponentShift;
+        if ((asLong & DoubleFormat.EXPONENT_MASK) != 0) { // Normal doubles. Most likely branch first.
+            return DoubleFormat.getExponentFromLong(asLong) >> exponentShift; // Use ">>" to preserve sign of exponent.
         }
-        return DoubleFormat.getExponentFromLong(asLong) >> exponentShift; // Use ">>" to preserve sign of exponent.
+        // Subnormals
+        final int extraExponent = Long.numberOfLeadingZeros(asLong << MANTISSA_SHIFT) + 1;
+        final long exponent = Double.MIN_EXPONENT - extraExponent; // Normalized
+        return exponent >> exponentShift;
     }
 
     @Override
     public double getBucketStart(final long index) {
         if (index < getMinIndexNormal(scale)) {
             final long exponent = Math.max((index << exponentShift), DoubleFormat.MIN_SUBNORMAL_EXPONENT);
-            final int extraExponent = (int)(Double.MIN_EXPONENT - exponent);
+            final int extraExponent = (int) (Double.MIN_EXPONENT - exponent);
             return Double.longBitsToDouble(1L << (DoubleFormat.MANTISSA_BITS - extraExponent));
         }
         // index << exponentShift produces a number ending with "scale" zero bits.

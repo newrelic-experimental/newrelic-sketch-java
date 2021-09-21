@@ -36,16 +36,11 @@ public abstract class SubBucketIndexer extends ScaledExpIndexer {
     @Override
     public long getBucketIndex(final double d) {
         final long asLong = Double.doubleToRawLongBits(d);
-
-        // Combine the uncommon case of zero and subnormals into one inexpensive check.
-        if (DoubleFormat.isSubnormalOrZeroFromLong(asLong)) {
-            if (d == 0) {
-                throw new IllegalArgumentException("SubBucketIndexer cannot handle zero");
-            }
-            return getBucketIndexForSubnormalAsLong(asLong);
+        if ((asLong & DoubleFormat.EXPONENT_MASK) != 0) { // Normal doubles. Most likely branch first.
+            return (((asLong & DoubleFormat.EXPONENT_MASK) >>> exponentShift)
+                    | getSubBucketIndex(DoubleFormat.getMantissaFromLong(asLong))) - indexBiasOffset;
         }
-        return (((asLong & DoubleFormat.EXPONENT_MASK) >>> exponentShift)
-                | getSubBucketIndex(DoubleFormat.getMantissaFromLong(asLong))) - indexBiasOffset;
+        return getBucketIndexForSubnormalAsLong(asLong);
     }
 
     @Override

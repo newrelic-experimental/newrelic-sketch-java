@@ -4,8 +4,22 @@
 
 package com.newrelic.nrsketch.indexer;
 
-// Base class for scaled base2 exponential histogram
+import com.newrelic.nrsketch.DoubleFormat;
+
+// Base class for scaled base2 exponential histogram, where
+//      base = 2 ^ (2 ^ -scale)
+//      bucketLowerBound = base ^ bucketIndex
+// This indexer only handles positive numbers. Behavior on zero and negative numbers is undefined.
+
 public abstract class ScaledExpIndexer implements BucketIndexer {
+    // Highest resolution. All mantissa bits are used to resolve buckets.
+    public static final int MAX_SCALE = DoubleFormat.MANTISSA_BITS;
+
+    // Lowest resolution. At min scale, there are only two buckets:
+    // Bucket 0 for values >= 1
+    // Bucket -1 for values < 1
+    public static final int MIN_SCALE = -(DoubleFormat.EXPONENT_BITS - 1);
+
     protected int scale;
 
     public ScaledExpIndexer(final int scale) {
@@ -33,6 +47,7 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
         return Math.pow(2, Math.scalb((double) index, -scale));
     }
 
+    // For numbers up to Double.MAX_VALUE
     public static long getMaxIndex(final int scale) {
         // Scale > 0: max exponent followed by max subbucket index.
         // Scale <= 0: max exponent with -scale bits truncated.
@@ -42,10 +57,20 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
 
     // For numbers down to Double.MIN_NORMAL
     public static long getMinIndexNormal(final int scale) {
+        return getMinIndex(scale, Double.MIN_EXPONENT);
+    }
+
+    // For numbers down to Double.MIN_VALUE
+    public static long getMinIndex(final int scale) {
+        return getMinIndex(scale, DoubleFormat.MIN_SUBNORMAL_EXPONENT);
+    }
+
+    // Index of 1.0 * 2^exponent
+    public static long getMinIndex(final int scale, final int exponent) {
         // Scale > 0: min exponent followed by min subbucket index, which is 0.
         // Scale <= 0: min exponent with -scale bits truncated.
-        return scale > 0 ? (((long) Double.MIN_EXPONENT << scale))
-                : ((long) Double.MIN_EXPONENT >> -scale); // Use ">>" to preserve sign of exponent.
+        return scale > 0 ? (((long) exponent << scale))
+                : ((long) exponent >> -scale); // Use ">>" to preserve sign of exponent.
     }
 
     public int getScale() {
@@ -62,6 +87,10 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
 
     public long getMinIndexNormal() {
         return getMinIndexNormal(scale);
+    }
+
+    public long getMinIndex() {
+        return getMinIndex(scale);
     }
 
     @Override

@@ -67,6 +67,10 @@ public class BucketIndexerTest {
         assertTwice(1023, 0x3FF, ScaledExpIndexer.getMaxIndex(0));
         assertTwice(16383, 0x3FFF, ScaledExpIndexer.getMaxIndex(4));
         assertTwice(63, 0x3F, ScaledExpIndexer.getMaxIndex(-4));
+
+        assertEquals(0, ScaledExpIndexer.getMaxIndex(ScaledExpIndexer.MIN_SCALE));
+        assertEquals(-1, ScaledExpIndexer.getMinIndexNormal(ScaledExpIndexer.MIN_SCALE));
+        assertEquals(-1, ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MIN_SCALE));
     }
 
     @Test
@@ -163,7 +167,8 @@ public class BucketIndexerTest {
         assertDoubleEquals(Double.MAX_VALUE, idx.getBucketEnd(idx.getMaxIndex()), 0);
 
         assertLongEquals(idx.getMaxIndex(), idx.getBucketIndex(Double.MAX_VALUE / FUDGE), 0);
-        assertLongEquals(idx.getMinIndexNormal(), idx.getBucketIndex(Double.MIN_NORMAL * FUDGE), 0);
+        assertLongEquals(idx.getMinIndexNormal(), idx.getBucketIndex(Double.MIN_NORMAL), 0);
+        assertLongEquals(idx.getMinIndex(), idx.getBucketIndex(Double.MIN_VALUE), 0);
     }
 
     private static void compareIndexers(final ScaledExpIndexer idx1, final ScaledExpIndexer idx2) {
@@ -238,21 +243,33 @@ public class BucketIndexerTest {
                 1); // powerOf2IndexDelta
 
         testScales(LogIndexer::new,
-                -10, // fromScale. LogIndexer gives wrong result at scale -11 at Double.MIN end, likely because of float point overflow or underflow.
+                ScaledExpIndexer.MIN_SCALE,
                 0, // toScale
                 Double.MIN_EXPONENT, // fromExponent
                 Double.MAX_EXPONENT, // toExponent
                 1, // roundTripIndexDelta
                 1); // powerOf2IndexDelta
+
+        testScalesSubnormal(LogIndexer::new,
+                1, // fromScale
+                43, // toScale
+                1, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
     }
 
     @Test
     public void testSubBucketLogIndexerScales() {
         testScales(SubBucketLogIndexer::new,
                 1, // fromScale
-                52, // toScale, highest possible scale
+                ScaledExpIndexer.MAX_SCALE, // toScale
                 Double.MIN_EXPONENT, // fromExponent
                 Double.MAX_EXPONENT, // toExponent
+                1, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
+
+        testScalesSubnormal(SubBucketLogIndexer::new,
+                1, // fromScale
+                ScaledExpIndexer.MAX_SCALE, // toScale
                 1, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
     }
@@ -266,15 +283,27 @@ public class BucketIndexerTest {
                 Double.MAX_EXPONENT, // toExponent
                 0, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
+
+        testScalesSubnormal(SubBucketLookupIndexer::new,
+                1, // fromScale
+                20, // toScale. Scales above 20 would use too much memory
+                1, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
     }
 
     @Test
     public void testExponentIndexerScales() {
         testScales(ExponentIndexer::new,
-                -11, // fromScale, lowest possible scale
+                ScaledExpIndexer.MIN_SCALE,
                 0, // toScale
                 Double.MIN_EXPONENT, // fromExponent
                 Double.MAX_EXPONENT, // toExponent
+                0, // roundTripIndexDelta
+                0); // powerOf2IndexDelta
+
+        testScalesSubnormal(ExponentIndexer::new,
+                ScaledExpIndexer.MIN_SCALE,
+                0, // toScale
                 0, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
     }
@@ -321,9 +350,11 @@ public class BucketIndexerTest {
                 assertLongEquals(expectedIndex, indexer.getBucketIndex(value), powerOf2IndexDelta);
 
                 if (scale > 0) {
-                    // Test one bucket down
-                    assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(Math.nextDown(value)), powerOf2IndexDelta);
-                    assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(indexer.getBucketStart(expectedIndex - 1)), roundTripIndexDelta);
+                    if (value > Double.MIN_NORMAL) {
+                        // Test one bucket down
+                        assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(Math.nextDown(value)), powerOf2IndexDelta);
+                        assertLongEquals(expectedIndex - 1, indexer.getBucketIndex(indexer.getBucketStart(expectedIndex - 1)), roundTripIndexDelta);
+                    }
 
                     // Test middle of bucket
                     assertLongEquals(expectedIndex + indexesPerPowerOf2 / 2, indexer.getBucketIndex(value * squareRootOf2), powerOf2IndexDelta);
@@ -334,6 +365,42 @@ public class BucketIndexerTest {
                          index += Math.max(1, indexesPerPowerOf2 / 10)) {
                         assertLongEquals(index, indexer.getBucketIndex(indexer.getBucketStart(index)), roundTripIndexDelta);
                     }
+                }
+            }
+        }
+    }
+
+    private void testScalesSubnormal(final Function<Integer, ScaledExpIndexer> indexerMaker,
+                                     final int fromScale,
+                                     final int toScale,
+                                     final long roundTripIndexDelta,
+                                     final long powerOf2IndexDelta
+    ) {
+        final double squareRootOf2 = Math.pow(2, .5);
+
+        for (int scale = fromScale; scale <= toScale; ++scale) {
+            final ScaledExpIndexer indexer = indexerMaker.apply(scale);
+            final long indexesPerPowerOf2 = scale >= 0 ? (1L << scale) : 0;
+
+            for (int significantBits = 1; significantBits <= 52; significantBits++) {
+                // Test start of power of 2. Value is Double.MIN_VALUE when significantBits is 1
+                final double start = Double.longBitsToDouble(1L << (significantBits - 1));
+                assertTrue(start < Double.MIN_NORMAL);
+
+                final int exponent = DoubleFormat.MIN_SUBNORMAL_EXPONENT + significantBits - 1;
+                final long expectedIndex = scale >= 0 ? indexesPerPowerOf2 * exponent : exponent >> (-scale);
+                assertLongEquals(expectedIndex, indexer.getBucketIndex(start), powerOf2IndexDelta);
+
+                if (scale > 0 && significantBits > scale) {
+                    // Test middle of power of 2
+                    assertLongEquals(expectedIndex + indexesPerPowerOf2 / 2, indexer.getBucketIndex(start * squareRootOf2), roundTripIndexDelta);
+
+                    // Test end of power of 2. All significant bits are 1's.
+                    final double value2 = Double.longBitsToDouble((1L << significantBits) - 1);
+                    assertTrue(value2 < Double.MIN_NORMAL);
+
+                    final long index2 = indexer.getBucketIndex(value2);
+                    assertLongEquals(index2, indexer.getBucketIndex(indexer.getBucketStart(index2)), roundTripIndexDelta);
                 }
             }
         }

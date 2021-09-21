@@ -388,19 +388,22 @@ public class BucketIndexerTest {
                 assertTrue(start < Double.MIN_NORMAL);
 
                 final int exponent = DoubleFormat.MIN_SUBNORMAL_EXPONENT + significantBits - 1;
-                final long expectedIndex = scale >= 0 ? indexesPerPowerOf2 * exponent : exponent >> (-scale);
-                assertLongEquals(expectedIndex, indexer.getBucketIndex(start), powerOf2IndexDelta);
+                final long startIndex = scale >= 0 ? indexesPerPowerOf2 * exponent : exponent >> (-scale);
+                assertLongEquals(startIndex, indexer.getBucketIndex(start), powerOf2IndexDelta);
 
-                if (scale > 0 && significantBits > scale) {
+                if (scale > 0 && significantBits > scale + 1) {
                     // Test middle of power of 2
-                    assertLongEquals(expectedIndex + indexesPerPowerOf2 / 2, indexer.getBucketIndex(start * squareRootOf2), roundTripIndexDelta);
+                    final long midIndex = startIndex + indexesPerPowerOf2 / 2;
+                    assertLongEquals(midIndex, indexer.getBucketIndex(start * squareRootOf2), roundTripIndexDelta);
+                    assertLongEquals(midIndex, indexer.getBucketIndex(indexer.getBucketStart(midIndex)), roundTripIndexDelta);
 
                     // Test end of power of 2. All significant bits are 1's.
-                    final double value2 = Double.longBitsToDouble((1L << significantBits) - 1);
-                    assertTrue(value2 < Double.MIN_NORMAL);
+                    final double end = Double.longBitsToDouble((1L << significantBits) - 1);
+                    assertTrue(end < Double.MIN_NORMAL);
 
-                    final long index2 = indexer.getBucketIndex(value2);
-                    assertLongEquals(index2, indexer.getBucketIndex(indexer.getBucketStart(index2)), roundTripIndexDelta);
+                    final long endIndex = startIndex + indexesPerPowerOf2 - 1;
+                    assertLongEquals(endIndex, indexer.getBucketIndex(end), roundTripIndexDelta);
+                    assertLongEquals(endIndex, indexer.getBucketIndex(indexer.getBucketStart(endIndex)), roundTripIndexDelta);
                 }
             }
         }

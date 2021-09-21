@@ -717,16 +717,45 @@ public class SimpleNrSketchTest {
         for (long l = 1; l <= 100; l++) {
             h1.insert(Double.longBitsToDouble(l));
         }
-        // Dataset contrast at 2^100. At scale 0, 7 buckets can cover 2^128.
-        assertEquals(0, h1.getScale());
+        assertEquals(0, h1.getScale()); // Scale=0, Base=2
+        dumpBuckets(h1, true); // Dump in asLong format, to verify exact double value
         verifyHistogram(h1, 100, Double.MIN_VALUE, 4.94E-322, new Bucket[]{
-                new Bucket(4.9E-324, 1.0E-323, 1), // bucket 1
-                new Bucket(1.0E-323, 2.0E-323, 2), // bucket 2
-                new Bucket(2.0E-323, 4.0E-323, 4), // bucket 3
-                new Bucket(4.0E-323, 7.9E-323, 8), // bucket 4
-                new Bucket(7.9E-323, 1.58E-322, 16), // bucket 5
-                new Bucket(1.58E-322, 3.16E-322, 32), // bucket 6
-                new Bucket(3.16E-322, 4.94E-322, 37), // bucket 7
+                new Bucket(Double.longBitsToDouble(1L), Double.longBitsToDouble(2L), 1), // bucket 1
+                new Bucket(Double.longBitsToDouble(2L), Double.longBitsToDouble(4L), 2), // bucket 2
+                new Bucket(Double.longBitsToDouble(4L), Double.longBitsToDouble(8L), 4), // bucket 3
+                new Bucket(Double.longBitsToDouble(8L), Double.longBitsToDouble(16L), 8), // bucket 4
+                new Bucket(Double.longBitsToDouble(16L), Double.longBitsToDouble(32L), 16), // bucket 5
+                new Bucket(Double.longBitsToDouble(32L), Double.longBitsToDouble(64L), 32), // bucket 6
+                new Bucket(Double.longBitsToDouble(64L), Double.longBitsToDouble(100L), 37), // bucket 7
+        });
+    }
+
+    @Test
+    public void testSubnormals3() {
+        final SimpleNrSketch h1 = new SimpleNrSketch(20);
+
+        for (long l = 1; l <= 100; l++) {
+            h1.insert(Double.longBitsToDouble(l));
+        }
+        dumpBuckets(h1, true); // Dump in asLong format, to verify exact double value
+
+        assertEquals(1, h1.getScale()); // scale=1, base = sqrt(2) = 1.41
+
+        // Bounds are rounded down to integers. Zero count buckets are skipped, by design.
+        verifyHistogram(h1, 100, Double.MIN_VALUE, 4.94E-322, new Bucket[]{
+                new Bucket(Double.longBitsToDouble(1L), Double.longBitsToDouble(1L), 1), // bucket 1
+                new Bucket(Double.longBitsToDouble(2L), Double.longBitsToDouble(2L), 1), // bucket 2
+                new Bucket(Double.longBitsToDouble(2L), Double.longBitsToDouble(4L), 1), // bucket 3
+                new Bucket(Double.longBitsToDouble(4L), Double.longBitsToDouble(5L), 2), // bucket 4
+                new Bucket(Double.longBitsToDouble(5L), Double.longBitsToDouble(8L), 2), // bucket 5
+                new Bucket(Double.longBitsToDouble(8L), Double.longBitsToDouble(11L), 4), // bucket 6
+                new Bucket(Double.longBitsToDouble(11L), Double.longBitsToDouble(16L), 4), // bucket 7
+                new Bucket(Double.longBitsToDouble(16L), Double.longBitsToDouble(22L), 7), // bucket 8
+                new Bucket(Double.longBitsToDouble(22L), Double.longBitsToDouble(32L), 9), // bucket 9
+                new Bucket(Double.longBitsToDouble(32L), Double.longBitsToDouble(45L), 14), // bucket 10
+                new Bucket(Double.longBitsToDouble(45L), Double.longBitsToDouble(64L), 18), // bucket 11
+                new Bucket(Double.longBitsToDouble(64L), Double.longBitsToDouble(90L), 27), // bucket 12
+                new Bucket(Double.longBitsToDouble(90L), Double.longBitsToDouble(100L), 10), // bucket 13
         });
     }
 
@@ -967,6 +996,10 @@ public class SimpleNrSketchTest {
 
     // Dump in a format ready for new test. Returns max relative error.
     static double dumpBuckets(final NrSketch histogram) {
+        return dumpBuckets(histogram, false);
+    }
+
+    static double dumpBuckets(final NrSketch histogram, final boolean asLong) {
         final Iterator<Bucket> iterator = histogram.iterator();
         int i = 1;
         double maxRelativeError = Double.NaN;
@@ -991,7 +1024,15 @@ public class SimpleNrSketchTest {
             if (bucket.count == 0) {
                 throw new RuntimeException("Zero count");
             }
-            System.out.printf("new Bucket(" + bucket.startValue + ", " + bucket.endValue + ", " + bucket.count + "), // bucket " + i++ + "\n");
+
+            if (asLong) {
+                System.out.print("new Bucket(Double.longBitsToDouble(" + Double.doubleToRawLongBits(bucket.startValue)
+                        + "L), Double.longBitsToDouble(" + Double.doubleToRawLongBits(bucket.endValue) + "L), "
+                        + bucket.count + "), // bucket " + i + "\n");
+            } else {
+                System.out.print("new Bucket(" + bucket.startValue + ", " + bucket.endValue + ", " + bucket.count + "), // bucket " + i + "\n");
+            }
+            i++;
         }
 
         final double reportedRelativeError = histogram.getPercentileRelativeError();
@@ -1002,9 +1043,11 @@ public class SimpleNrSketchTest {
         System.out.println("min=" + histogram.getMin() + " max=" + histogram.getMax()
                 + " reportedError=" + reportedRelativeError + " actualError=" + maxRelativeError);
 
-        if (!(histogram instanceof SimpleNrSketch &&
+        // Exclusive simple sketch data not in bucket, and subnormal cases.
+        if (!((histogram instanceof SimpleNrSketch &&
                 (((SimpleNrSketch) histogram).isBucketHoldsPositiveNumbers() && histogram.getMin() < 0
                         || !((SimpleNrSketch) histogram).isBucketHoldsPositiveNumbers() && histogram.getMax() > 0))
+                || histogram.getMin() < Double.MIN_NORMAL)
                 && maxRelativeError > reportedRelativeError * ERROR_DELTA) {
             throw new RuntimeException("maxRelativeError " + maxRelativeError + " > reportedRelativeError " + reportedRelativeError);
         }

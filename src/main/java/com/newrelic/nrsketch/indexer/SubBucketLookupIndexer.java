@@ -9,6 +9,7 @@ import com.newrelic.nrsketch.DoubleFormat;
 // Convert linear subbuckets to log subbuckets via lookup tables.
 // This indexer is fast because it uses simple integer operations for mapping,
 // but it costs more space because of the lookup tables.
+// See Indexer.md in this repo for detailed documentation on this method.
 
 public class SubBucketLookupIndexer extends SubBucketIndexer {
     // Up to this scale, we use static lookup tables, so there is no extra runtime memory cost.
@@ -17,32 +18,22 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
 
     // LookupTable size at scale 6 is about 1KB. Total static table size is less than 2KB.
     // The static tables cover commonly used scales, with relative error from .5% (scale 6) to 4% (scale 3)
-    private static final int MIN_STATIC_TABLE_SCALE = 3; // inclusive
-    private static final int MAX_STATIC_TABLE_SCALE = PREFERRED_MAX_SCALE; // inclusive
+    static final int MIN_STATIC_TABLE_SCALE = 3; // inclusive
+    static final int MAX_STATIC_TABLE_SCALE = PREFERRED_MAX_SCALE; // inclusive
 
     // LookupTable[] array is indexed by "scale - MIN_STATIC_TABLE_SCALE"
-    private static final LookupTable[] STATIC_TABLES = initStaticTables();
+    static final LookupTable[] STATIC_TABLES = initStaticTables();
 
-    private static class LookupTable {
-        private final long[] logBucketEndArray;  // End bound of the log buckets. 2^scale entries
-        private final int[] logBucketIndexArray; // Index of the log bucket where a linear bucket starts. 2^(scale+1) entries
-        private final int mantissaShift;         // "mantissa >>> mantissaShift" yields linear bucket index.
+    static class LookupTable {
+        final long[] logBucketEndArray;  // End bound of the log buckets. Exclusive end.
+        final int[] logBucketIndexArray; // Index of the log bucket where a linear bucket starts.
 
         private LookupTable(final int scale) {
-            final long[] logBounds = getLogBoundMantissas(scale);
+            // "+ 1" to guarantee that linear bucket width is smaller than the smallest (1st) log bucket.
+            // See Indexer.md for more info.
+            int linearScale = scale + 1;
 
-            // Linear bucket width must be equal or smaller than smallest (1st) log bucket.
-            int linearScale = scale;
-            while ((1L << (DoubleFormat.MANTISSA_BITS - linearScale)) > logBounds[1]) {
-                linearScale++;
-            }
-
-            // Expect nLinearSubBuckets = nLogSubBuckets * 2
-            if (linearScale != scale + 1) {
-                throw new RuntimeException("linearScale=" + linearScale + " scale=" + scale);
-            }
-
-            // nLinearSubBuckets must fit in an integer.
+            // Array size must fit in an Integer.
             if ((1L << linearScale) > Integer.MAX_VALUE) {
                 throw new RuntimeException("Scale is too big. linearScale=" + linearScale + " scale=" + scale);
             }
@@ -50,15 +41,31 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
             logBucketEndArray = new long[1 << scale];
             logBucketIndexArray = new int[1 << linearScale];
 
-            mantissaShift = DoubleFormat.MANTISSA_BITS - linearScale;
+            long prevLogBucketEnd = 0;
 
             for (int i = 0; i < logBucketEndArray.length; i++) {
-                logBucketEndArray[i] = i + 1 < logBounds.length ? logBounds[i + 1] : Long.MAX_VALUE;
+                logBucketEndArray[i] = (i == logBucketEndArray.length - 1) ? 1L << DoubleFormat.MANTISSA_BITS
+                        : DoubleFormat.getMantissa(scaledBasePower(scale, i + 1));
+
+                if (logBucketEndArray[i] < prevLogBucketEnd) {
+                    throw new RuntimeException("logBucketEnd going backward");
+                }
+                prevLogBucketEnd = logBucketEndArray[i];
+            }
+
+            final int mantissaShift = DoubleFormat.MANTISSA_BITS - linearScale;
+            int logBucketIndex = 0;
+
+            if ((1L << mantissaShift) >= logBucketEndArray[0]) {
+                throw new RuntimeException("Linear bucket width >= log bucket width");
             }
 
             for (int i = 0; i < logBucketIndexArray.length; i++) {
                 final long linearBucketStart = ((long) i) << mantissaShift;
-                logBucketIndexArray[i] = binarySearch(logBounds, linearBucketStart);
+                while (logBucketEndArray[logBucketIndex] <= linearBucketStart) {
+                    logBucketIndex++;
+                }
+                logBucketIndexArray[i] = logBucketIndex;
             }
         }
     }
@@ -72,7 +79,7 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
         return lookupTables;
     }
 
-    private static LookupTable getLookupTable(final int scale) {
+    static LookupTable getLookupTable(final int scale) {
         if (scale >= MIN_STATIC_TABLE_SCALE && scale <= MAX_STATIC_TABLE_SCALE) {
             return STATIC_TABLES[scale - MIN_STATIC_TABLE_SCALE];
         }
@@ -80,7 +87,7 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
     }
 
     // Not using a LookupTable object, in order to avoid a level of indirection.
-    private final long[] logBucketEndArray;  // End bound of the log buckets.
+    private final long[] logBucketEndArray;  // End bound of the log buckets. Exclusive end.
     private final int[] logBucketIndexArray; // Index of the log bucket where a linear bucket starts.
     private final int mantissaShift;
 
@@ -90,7 +97,8 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
 
         logBucketEndArray = lookupTable.logBucketEndArray;
         logBucketIndexArray = lookupTable.logBucketIndexArray;
-        mantissaShift = lookupTable.mantissaShift;
+
+        mantissaShift = DoubleFormat.MANTISSA_BITS - (scale + 1);
     }
 
     @Override
@@ -104,40 +112,5 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
     long getSubBucketStartMantissa(final long index) {
         // Convert bucket end array to bucket start array.
         return index == 0 ? 0 : logBucketEndArray[(int) (index - 1)];
-    }
-
-    // Subdivide the [1, 2] space into nSubBuckets log subbuckets.
-    // Return lower bound of each subbucket. Entry 0 starts at 1.
-    public static long[] getLogBoundMantissas(final int scale) {
-        final int nSubBuckets = 1 << scale;
-        final long[] bounds = new long[nSubBuckets];
-        for (int i = 0; i < nSubBuckets; i++) {
-            bounds[i] = DoubleFormat.getMantissa(scaledBasePower(scale, i));
-        }
-        return bounds;
-    }
-
-    // Returns index where array[index] <= key < array[index + 1]
-    // Returns -1 if key < array[0]
-    // Returns array.length - 1 if key >= array[length - 1]
-    public static int binarySearch(final long[] array, final long key) {
-        int from = 0;              // inclusive
-        int to = array.length - 1; // inclusive
-
-        while (from <= to) {
-            final int middle = (from + to) >>> 1; // Use ">>>" to handle "+" overflow.
-            final long value = array[middle];
-
-            if (key < value) {
-                to = middle - 1;   // Search lower half.
-            } else if (key == value) {
-                return middle;     // Exact match
-            } else { // key > value
-                from = middle + 1; // Search higher half
-            }
-        }
-        // Returns the closest match index, or
-        // -1 (key below array), length - 1 (key above array)
-        return from - 1;
     }
 }

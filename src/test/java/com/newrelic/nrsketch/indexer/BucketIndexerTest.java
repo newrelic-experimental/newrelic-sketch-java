@@ -10,9 +10,8 @@ import org.junit.Test;
 
 import java.util.function.Function;
 
-import static com.newrelic.nrsketch.indexer.SubBucketLookupIndexer.binarySearch;
-import static com.newrelic.nrsketch.indexer.SubBucketLookupIndexer.getLogBoundMantissas;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -69,8 +68,6 @@ public class BucketIndexerTest {
         assertTwice(63, 0x3F, ScaledExpIndexer.getMaxIndex(-4));
 
         assertEquals(0, ScaledExpIndexer.getMaxIndex(ScaledExpIndexer.MIN_SCALE));
-        assertEquals(-1, ScaledExpIndexer.getMinIndexNormal(ScaledExpIndexer.MIN_SCALE));
-        assertEquals(-1, ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MIN_SCALE));
     }
 
     @Test
@@ -80,50 +77,60 @@ public class BucketIndexerTest {
         assertTwice(-1022, 0xFFFFFFFFFFFFFC02L, ScaledExpIndexer.getMinIndexNormal(0));
         assertTwice(-16352, 0xFFFFFFFFFFFFC020L, ScaledExpIndexer.getMinIndexNormal(4));
         assertTwice(-64, 0xFFFFFFFFFFFFFFC0L, ScaledExpIndexer.getMinIndexNormal(-4));
+
+        assertEquals(-1, ScaledExpIndexer.getMinIndexNormal(ScaledExpIndexer.MIN_SCALE));
+        assertEquals(-1, ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MIN_SCALE));
     }
 
     @Test
-    public void testLogBounds() {
-        final int scale = 4;
-        final int nSubBuckets = 1 << scale;
-        final long[] logBounds = getLogBoundMantissas(scale);
+    public void testLookupTable() {
+        for (int scale = 1; scale <= 6; scale++) {
+            testLookupTable(scale);
+        }
+    }
+
+    private void testLookupTable(final int scale) {
+        final SubBucketLookupIndexer.LookupTable lookupTable = SubBucketLookupIndexer.getLookupTable(scale);
+        final int nLogBuckets = 1 << scale;
+        final int nLinearBuckets = 1 << (scale + 1);
+
+        assertEquals(nLogBuckets, lookupTable.logBucketEndArray.length);
+        assertEquals(nLinearBuckets, lookupTable.logBucketIndexArray.length);
+
         double base = 0;
-        for (int i = 0; i < logBounds.length; i++) {
-            final double d = DoubleFormat.makeDouble1To2(logBounds[i]);
-            switch (i) {
-                case 0:
-                    assertEquals(1.0, d, 0);
-                    break;
-                case 1:
-                    base = d;
-                    break;
-                case nSubBuckets - 1:
-                    assertDoubleEquals(2.0, d * base, DELTA);
-                    break;
-                default: // Just to keep spotbugs happy
-            }
-            if (i > 0) {
-                assertDoubleEquals(d, DoubleFormat.makeDouble1To2(logBounds[i - 1]) * base, DELTA);
+        for (int i = 0; i < nLogBuckets; i++) {
+            final long mantissa = lookupTable.logBucketEndArray[i];
+            final double d = DoubleFormat.makeDouble1To2(mantissa);
+            if (i == 0) {
+                base = d;
+            } else if (i == nLogBuckets - 1) {
+                assertEquals(1L << DoubleFormat.MANTISSA_BITS, mantissa);
+            } else {
+                assertDoubleEquals(d, DoubleFormat.makeDouble1To2(lookupTable.logBucketEndArray[i - 1]) * base, DELTA);
             }
         }
-        assertDoubleEquals(2.0, Math.pow(base, nSubBuckets), DELTA);
+        assertDoubleEquals(2.0, Math.pow(base, nLogBuckets), DELTA);
+
+        for (int i = 0; i < nLinearBuckets; i++) {
+            final double linearBucketStart = 1 + ((double) i / nLinearBuckets);
+            final int logBucket = lookupTable.logBucketIndexArray[i];
+
+            final double logBucketStart = logBucket == 0 ? 1 : DoubleFormat.makeDouble1To2(lookupTable.logBucketEndArray[logBucket - 1]);
+            final double logBucketEnd = logBucket == nLogBuckets - 1 ? 2 : DoubleFormat.makeDouble1To2(lookupTable.logBucketEndArray[logBucket]);
+
+            assertTrue(linearBucketStart >= logBucketStart);
+            assertTrue(linearBucketStart < logBucketEnd);
+        }
     }
 
     @Test
-    public void testBinarySearch() {
-        final long[] lookup = {0, 10, 20, 30, 40, 50, 60, 70};
-        assertEquals(8, lookup.length);
-
-        for (long l = 0; l < 80; l++) {
-            //System.out.println(l);
-            assertEquals(l / 10, binarySearch(lookup, l));
+    public void testGetLookupTable() {
+        for (int scale = 1; scale <= SubBucketLookupIndexer.MAX_STATIC_TABLE_SCALE + 3; scale++) {
+            final SubBucketLookupIndexer.LookupTable lookupTable = SubBucketLookupIndexer.getLookupTable(scale);
+            if (scale >= SubBucketLookupIndexer.MIN_STATIC_TABLE_SCALE && scale <= SubBucketLookupIndexer.MAX_STATIC_TABLE_SCALE) {
+                assertSame(lookupTable, SubBucketLookupIndexer.STATIC_TABLES[scale - SubBucketLookupIndexer.MIN_STATIC_TABLE_SCALE]);
+            }
         }
-        assertEquals(0, binarySearch(lookup, 0));
-        assertEquals(1, binarySearch(lookup, 10));
-        assertEquals(1, binarySearch(lookup, 15));
-
-        assertEquals(-1, binarySearch(lookup, -100));
-        assertEquals(7, binarySearch(lookup, 100));
     }
 
     @Test

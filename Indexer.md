@@ -138,7 +138,7 @@ Let N be the number of log scale buckets. We have
 N log buckets: base ^ N = 2, first bucket ends at base  
 2N linear buckets: bucketWidth = 1/2N, First linear bucket ends at 1 + 1/2N
 
-if we can prove that (1 + 1/2N) ^ N < 2, then we have proven that 1 + 1/2N < base (linear bucket width is smaller than
+If we can prove that (1 + 1/2N) ^ N < 2, then we have proven that 1 + 1/2N < base (linear bucket width is smaller than
 log scale bucket width).
 
 To prove (1 + 1/2N) ^ N < 2  

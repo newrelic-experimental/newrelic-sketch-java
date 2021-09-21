@@ -2,8 +2,8 @@
 
 ## Class Hierarchy
 
-The indexers are in its own [Indexer Java package](src/main/java/com/newrelic/nrsketch/indexer). The package is self-contained.
-It can be used without the rest of NrSketch. The class hierarchy in the package is:
+The indexers are in its own [Indexer Java package](src/main/java/com/newrelic/nrsketch/indexer). The package is
+self-contained. It can be used without the rest of NrSketch. The class hierarchy in the package is:
 
     BucketIndexer // Interface
         |--- ScaledExpIndexer // Abstract class
@@ -21,8 +21,8 @@ basically, mapping a "double" value to a bucket index, and mapping a bucket inde
 * bucket_lower_bound = base ^ bucket_index
 * base = 2 ^ (2 ^ -scale)
 
-**SubBucketIndexer** is the abstract base class for all subBucket indexers, which divide the
-mantissa into log scale subbuckets for each binary exponent in "double". It works only on scales greater than 0.
+**SubBucketIndexer** is the abstract base class for all subBucket indexers, which divide the mantissa into log scale
+subbuckets for each binary exponent in "double". It works only on scales greater than 0.
 
 The followings are concrete classes you can actually instantiate:
 
@@ -60,20 +60,11 @@ SubBucketLookupIndexer.
 Note that the LogIndexer class is not used by AUTO_SELECT at all. It was written mostly as a reference to test other
 indexers.
 
-## Subnormal numbers
+### Special features
 
-The subbucket indexers (SubBucketLogIndexer and SubBucketLookupIndexer) and the ExponentIndexer do not have special
-logic for subnormal numbers. Thus they do not satisfy the "bound = base ^ index" formula in the subnormal range (see
-SubBucketIndexer.java for details). The LogIndexer does handle subnormal numbers properly. To be standard conforming,
-NrSketch folds subnormal numbers into the special bucket for 0, instead of the indexed buckets. This is not a limitation
-of the scaled histogram or the subbucket methods. NrSketch does this only because:
-
-* The author is too lazy to write the special subnormal logic
-* Subnormal numbers are rarely used. They are at the rarified bottom end of the "double" range. They extend the double
-  range at the cost of fewer significant digits.
-* Supporting subnormal numbers will add a small performance cost to the subbucket indexers. They will need a "if
-  subnormal"
-  branch in the critical path.
+* The indexers return a 64 bit "long" index. All double values can be mapped to an index, at all meaningful scales
+  (-11 to 52, inclusive).
+* All indexers handle subnormal numbers properly, conforming to the bound and base formula.
 
 ## How the lookup indexer works
 

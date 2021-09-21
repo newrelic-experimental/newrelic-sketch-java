@@ -63,7 +63,7 @@ public class ComboNrSketch implements NrSketch {
                     }
                 } else {
                     throw new IllegalArgumentException("Unknown subsketch class " + subSketch.getClass().getName());
-                };
+                }
                 break;
             case 2:
                 negativeHistogram = histograms.get(0);
@@ -106,9 +106,7 @@ public class ComboNrSketch implements NrSketch {
 
     @Override
     public void insert(final double d, final long instances) {
-        // Send subnormal numbers to positive histogram, regardless of sign,
-        // so that only the positive histogram has a zero count.
-        if (d >= 0 || DoubleFormat.isSubnormalOrZero(d)) {
+        if (d >= 0) {
             getOrCreatePositveHistogram().insert(d, instances);
         } else {
             getOrCreateNegativeHistogram().insert(d, instances);

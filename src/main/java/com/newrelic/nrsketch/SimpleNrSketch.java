@@ -158,13 +158,9 @@ public class SimpleNrSketch implements NrSketch {
     }
 
     @Override
-    public void insert(double d, final long instances) {
+    public void insert(final double d, final long instances) {
         if (Double.isNaN(d) || Double.isInfinite(d)) {
             return; // Ignore Nan and positive and negative infinities
-        }
-
-        if (DoubleFormat.isSubnormalOrZero(d)) {
-            d = 0;
         }
 
         updateMin(d);

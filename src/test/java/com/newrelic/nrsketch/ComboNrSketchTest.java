@@ -223,48 +223,55 @@ public class ComboNrSketchTest {
         assertTrue(negativeSubnormal < 0 && negativeSubnormal > Double.MIN_NORMAL * -1);
 
         h1.insert(positiveSubnormal);
-        verifyHistogram(h1, 1, 0, 0, new Bucket[]{
-                new Bucket(0.0, 0.0, 1), // bucket 1
+        verifyHistogram(h1, 1, positiveSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(positiveSubnormal, positiveSubnormal, 1), // bucket 1
         });
 
         h1.insert(negativeSubnormal);
-        verifyHistogram(h1, 2, 0, 0, new Bucket[]{
-                new Bucket(0.0, 0.0, 2), // bucket 1
+        verifyHistogram(h1, 2, negativeSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(4.94E-322, 4.94E-322, 1), // bucket 2
         });
 
         h1.insert(0);
-        verifyHistogram(h1, 3, 0, 0, new Bucket[]{
-                new Bucket(0.0, 0.0, 3), // bucket 1
+        verifyHistogram(h1, 3, negativeSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-322, 4.94E-322, 1), // bucket 3
         });
 
         h1.insert(10);
-        verifyHistogram(h1, 4, 0, 10, new Bucket[]{
-                new Bucket(0.0, 0.0, 3), // bucket 1
-                new Bucket(9.998955127333458, 10.0, 1), // bucket 2
+        verifyHistogram(h1, 4, negativeSubnormal, 10, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(1.0, 10.0, 1), // bucket 4
         });
 
         h1.insert(20);
-        verifyHistogram(h1, 5, 0, 20, new Bucket[]{
-                new Bucket(0.0, 0.0, 3), // bucket 1
-                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
-                new Bucket(19.027313840043536, 20.0, 1), // bucket 3
+        verifyHistogram(h1, 5, negativeSubnormal, 20, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(1.0, 20.0, 2), // bucket 4
         });
 
         h1.insert(-50);
         verifyHistogram(h1, 6, -50, 20, new Bucket[]{
-                new Bucket(-50.0, -50.0, 1), // bucket 1
-                new Bucket(0.0, 0.0, 3), // bucket 2
-                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 3
-                new Bucket(19.027313840043536, 20.0, 1), // bucket 4
+                new Bucket(-50.0, -1.0, 1), // bucket 1
+                new Bucket(-2.2250738585072014E-308, -9.9E-322, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 4
+                new Bucket(1.0, 20.0, 2), // bucket 5
         });
 
         h1.insert(-40);
         verifyHistogram(h1, 7, -50, 20, new Bucket[]{
-                new Bucket(-50.0, -49.350746413054104, 1), // bucket 1
-                new Bucket(-41.49886574883231, -40.0, 1), // bucket 2
-                new Bucket(0.0, 0.0, 3), // bucket 3
-                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 4
-                new Bucket(19.027313840043536, 20.0, 1), // bucket 5
+                new Bucket(-50.0, -1.0, 2), // bucket 1
+                new Bucket(-2.2250738585072014E-308, -9.9E-322, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 4
+                new Bucket(1.0, 20.0, 2), // bucket 5
         });
     }
 

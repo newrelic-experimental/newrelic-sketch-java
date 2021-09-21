@@ -15,10 +15,11 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
     // Highest resolution. All mantissa bits are used to resolve buckets.
     public static final int MAX_SCALE = DoubleFormat.MANTISSA_BITS;
 
-    // Lowest resolution. At min scale, there are only two buckets:
+    // Lowest resolution. At min scale, base = 2 ^ (2^11). Because 2^11 covers the absolute value from
+    // max double exponent 1023 to min exponent -1074 (including subnormals), there are only two buckets:
     // Bucket 0 for values >= 1
     // Bucket -1 for values < 1
-    public static final int MIN_SCALE = -(DoubleFormat.EXPONENT_BITS - 1);
+    public static final int MIN_SCALE = -DoubleFormat.EXPONENT_BITS;
 
     protected int scale;
 

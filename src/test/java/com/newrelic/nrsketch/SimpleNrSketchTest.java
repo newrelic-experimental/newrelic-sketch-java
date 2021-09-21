@@ -653,54 +653,80 @@ public class SimpleNrSketchTest {
         assertTrue(negativeSubnormal < 0 && negativeSubnormal > Double.MIN_NORMAL * -1);
 
         h1.insert(positiveSubnormal);
-        assertEquals(1, h1.getCountForZero());
-        verifyHistogram(h1, 1, 0, 0, new Bucket[]{
-                new Bucket(0.0, 0.0, 1), // bucket 1
+        assertEquals(0, h1.getCountForZero());
+        verifyHistogram(h1, 1, positiveSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(4.94E-322, 4.94E-322, 1), // bucket 1
         });
 
         h1.insert(negativeSubnormal);
-        assertEquals(2, h1.getCountForZero());
-        verifyHistogram(h1, 2, 0, 0, new Bucket[]{
-                new Bucket(0.0, 0.0, 2), // bucket 1
+        assertEquals(0, h1.getCountForZero());
+        verifyHistogram(h1, 2, negativeSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(-9.9E-322, 0.0, 1), // bucket 1
+                new Bucket(4.9E-322, 4.94E-322, 1), // bucket 2
         });
 
         h1.insert(0);
-        assertEquals(3, h1.getCountForZero());
-        verifyHistogram(h1, 3, 0, 0, new Bucket[]{
-                new Bucket(0.0, 0.0, 3), // bucket 1
+        assertEquals(1, h1.getCountForZero());
+        verifyHistogram(h1, 3, negativeSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(-9.9E-322, 0.0, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-322, 4.94E-322, 1), // bucket 3
         });
 
         h1.insert(10);
-        assertEquals(3, h1.getCountForZero());
-        verifyHistogram(h1, 4, 0, 10, new Bucket[]{
-                new Bucket(0.0, 0.0, 3), // bucket 1
-                new Bucket(9.998955127333458, 10.0, 1), // bucket 2
+        assertEquals(1, h1.getCountForZero());
+        verifyHistogram(h1, 4, negativeSubnormal, 10, new Bucket[]{
+                new Bucket(-9.9E-322, 0.0, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(1.0, 10.0, 1), // bucket 4
         });
 
         h1.insert(20);
-        assertEquals(3, h1.getCountForZero());
-        verifyHistogram(h1, 5, 0, 20, new Bucket[]{
-                new Bucket(0.0, 0.0, 3), // bucket 1
-                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
-                new Bucket(19.027313840043536, 20.0, 1), // bucket 3
+        assertEquals(1, h1.getCountForZero());
+        verifyHistogram(h1, 5, negativeSubnormal, 20, new Bucket[]{
+                new Bucket(-9.9E-322, 0.0, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(1.0, 20.0, 2), // bucket 4
         });
 
         h1.insert(-50);
-        assertEquals(3, h1.getCountForZero());
+        assertEquals(1, h1.getCountForZero());
         verifyHistogram(h1, 6, -50, 20, new Bucket[]{
-                new Bucket(-50.0, 0.0, 1), // bucket 1
-                new Bucket(0.0, 0.0, 3), // bucket 2
-                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 3
-                new Bucket(19.027313840043536, 20.0, 1), // bucket 4
+                new Bucket(-50.0, 0.0, 2), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(1.0, 20.0, 2), // bucket 4
         });
 
         h1.insert(-40);
-        assertEquals(3, h1.getCountForZero());
+        assertEquals(1, h1.getCountForZero());
         verifyHistogram(h1, 7, -50, 20, new Bucket[]{
-                new Bucket(-50.0, 0.0, 2), // bucket 1
-                new Bucket(0.0, 0.0, 3), // bucket 2
-                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 3
-                new Bucket(19.027313840043536, 20.0, 1), // bucket 4
+                new Bucket(-50.0, 0.0, 3), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(1.0, 20.0, 2), // bucket 4
+        });
+    }
+
+    @Test
+    public void testSubnormals2() {
+        final SimpleNrSketch h1 = new SimpleNrSketch(10);
+
+        for (long l = 1; l <= 100; l++) {
+            h1.insert(Double.longBitsToDouble(l));
+        }
+        // Dataset contrast at 2^100. At scale 0, 7 buckets can cover 2^128.
+        assertEquals(0, h1.getScale());
+        verifyHistogram(h1, 100, Double.MIN_VALUE, 4.94E-322, new Bucket[]{
+                new Bucket(4.9E-324, 1.0E-323, 1), // bucket 1
+                new Bucket(1.0E-323, 2.0E-323, 2), // bucket 2
+                new Bucket(2.0E-323, 4.0E-323, 4), // bucket 3
+                new Bucket(4.0E-323, 7.9E-323, 8), // bucket 4
+                new Bucket(7.9E-323, 1.58E-322, 16), // bucket 5
+                new Bucket(1.58E-322, 3.16E-322, 32), // bucket 6
+                new Bucket(3.16E-322, 4.94E-322, 37), // bucket 7
         });
     }
 

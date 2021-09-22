@@ -160,5 +160,5 @@ toward e as n grows:
 | 1000     | 2.7169      |
 | infinity | 2.7182 ...  |
 
-As shown above, the sequence is always below 4. This we have proven that linear bucket width is smaller than log bucket
+As shown above, the sequence is always below 4. Thus we have proven that linear bucket width is smaller than log bucket
 width. 

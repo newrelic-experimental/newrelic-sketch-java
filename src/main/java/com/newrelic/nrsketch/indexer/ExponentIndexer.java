@@ -20,7 +20,7 @@ public class ExponentIndexer extends ScaledExpIndexer {
         this.exponentShift = -scale;
     }
 
-    // Sign bit of value is ignored
+    // See SubBucketIndexer comments for subnormal format.
     @Override
     public long getBucketIndex(final double value) {
         final long asLong = Double.doubleToRawLongBits(value);

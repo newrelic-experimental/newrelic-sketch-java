@@ -9,7 +9,7 @@ package com.newrelic.nrsketch.indexer;
 //      bucketLowerBound = base ^ bucketIndex
 // This indexer only handles positive numbers. Behavior on zero and negative numbers is undefined.
 
-public abstract class ScaledExpIndexer implements BucketIndexer {
+public abstract class ScaledExpIndexer implements ScaledIndexer {
     // Highest resolution. All mantissa bits are used to resolve buckets.
     public static final int MAX_SCALE = DoubleFormat.MANTISSA_BITS;
 
@@ -72,8 +72,22 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
                 : ((long) exponent >> -scale); // Use ">>" to preserve sign of exponent.
     }
 
+    @Override
     public int getScale() {
         return scale;
+    }
+
+    // Returns relative error upper bound for percentiles generated from this histogram.
+    // relativeError = Math.abs(reportedValue - actualValue) / reportedValue
+    //
+    // When a requested percentile falls into a bucket, the actual percentile value can be anywhere within this bucket.
+    // The percentile function shall return the mid point of the bucket for symmetric +/- error margin.
+    // The relative error upper bound is (bucketWidth / 2) / bucketMiddle
+    //
+    @Override
+    public double getPercentileRelativeError() {
+        final double base = getBase();
+        return (base - 1) / (base + 1);
     }
 
     public double getBase() {

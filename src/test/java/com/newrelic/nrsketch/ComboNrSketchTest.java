@@ -7,7 +7,7 @@ package com.newrelic.nrsketch;
 import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.DoubleFormat;
 import com.newrelic.nrsketch.indexer.IndexerOption;
-import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
+import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import org.junit.Test;
 
 import java.util.List;
@@ -51,7 +51,7 @@ public class ComboNrSketchTest {
     private void assertParams(final ComboNrSketch sketch,
                              final int expectedNumBucketsPerHistogram,
                              final int expectedInitScale,
-                             final Function<Integer, ScaledExpIndexer> expectedIndexerMaker) {
+                             final Function<Integer, ScaledIndexer> expectedIndexerMaker) {
         sketch.insert(10);
         sketch.insert(-20);
 

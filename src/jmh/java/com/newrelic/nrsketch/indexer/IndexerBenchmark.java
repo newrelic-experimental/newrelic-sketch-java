@@ -49,7 +49,7 @@ public class IndexerBenchmark {
     @Param({"LOG_FUNCTION", "SUBBUCKET_LOG", "SUBBUCKET_LOOKUP", "EXPONENT"})
     IndexerType _indexerType; // Starts with "_" to make it the 1st param in alphabetic param name sort order.
 
-    BucketIndexer indexer;
+    ScaledIndexer indexer;
 
     @Setup
     public void setup() {

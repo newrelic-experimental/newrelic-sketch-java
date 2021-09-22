@@ -5,7 +5,7 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.indexer.IndexerOption;
-import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
+import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 
@@ -22,12 +22,12 @@ public class SimpleNrSketch implements NrSketch {
     public static final int DEFAULT_MAX_BUCKETS = 320; // 2.17% relative error (scale 4) for max/min contrast up to 1M
     public static final int DEFAULT_INIT_SCALE = 12; // .0085% relative error
 
-    public static final Function<Integer, ScaledExpIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT;
+    public static final Function<Integer, ScaledIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT;
 
     private WindowedCounterArray buckets;
     private final boolean bucketHoldsPositiveNumbers;
-    private ScaledExpIndexer indexer;
-    private final Function<Integer, ScaledExpIndexer> indexerMaker;
+    private ScaledIndexer indexer;
+    private final Function<Integer, ScaledIndexer> indexerMaker;
 
     private long totalCount;
     private long countForNegatives;
@@ -56,7 +56,7 @@ public class SimpleNrSketch implements NrSketch {
     public SimpleNrSketch(final int maxNumBuckets,
                           final int initialScale,
                           final boolean bucketHoldsPositiveNumbers,
-                          final Function<Integer, ScaledExpIndexer> indexerMaker) {
+                          final Function<Integer, ScaledIndexer> indexerMaker) {
         buckets = new WindowedCounterArray(maxNumBuckets);
         this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
         this.indexerMaker = indexerMaker;
@@ -67,7 +67,7 @@ public class SimpleNrSketch implements NrSketch {
     public SimpleNrSketch(final WindowedCounterArray buckets,
                           final boolean bucketHoldsPositiveNumbers,
                           final int scale,
-                          final Function<Integer, ScaledExpIndexer> indexerMaker,
+                          final Function<Integer, ScaledIndexer> indexerMaker,
                           final long totalCount,
                           final long countForNegatives,
                           final long countForZero,
@@ -113,7 +113,7 @@ public class SimpleNrSketch implements NrSketch {
         return indexer.getScale();
     }
 
-    public Function<Integer, ScaledExpIndexer> getIndexerMaker() {
+    public Function<Integer, ScaledIndexer> getIndexerMaker() {
         return indexerMaker;
     }
 
@@ -464,17 +464,9 @@ public class SimpleNrSketch implements NrSketch {
         }
     }
 
-    // Returns relative error upper bound for percentiles generated from this histogram.
-    // relativeError = Math.abs(reportedValue - actualValue) / reportedValue
-    //
-    // When a requested percentile falls into a bucket, the actual percentile value can be anywhere within this bucket.
-    // The percentile function shall return the mid point of the bucket for symmetric +/- error margin.
-    // The relative error upper bound is (bucketWidth / 2) / bucketMiddle
-    //
     @Override
     public double getPercentileRelativeError() {
-        final double base = indexer.getBase();
-        return (base - 1) / (base + 1);
+        return indexer.getPercentileRelativeError();
     }
 
     public boolean isBucketHoldsPositiveNumbers() {

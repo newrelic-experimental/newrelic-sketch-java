@@ -8,11 +8,11 @@ import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.DoubleFormat;
 import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
+import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.Function;
 
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
@@ -54,7 +54,7 @@ public class SimpleNrSketchTest {
                               final int expectedMaxNumBuckets,
                               final int expectedInitScale,
                               final boolean expectedBucketHoldsPositiveNumbers,
-                              final Function<Integer, ScaledExpIndexer> expectedIndexerMaker) {
+                              final Function<Integer, ScaledIndexer> expectedIndexerMaker) {
         sketch.insert(10);
         sketch.insert(-20);
 
@@ -98,8 +98,8 @@ public class SimpleNrSketchTest {
         final double delta = 1e-12;
         for (int scale = 12; scale >= -3; scale--) {
             for (int scaleDelta = 1; scaleDelta <= 5; scaleDelta++) {
-                final ScaledExpIndexer indexer1 = IndexerOption.AUTO_SELECT.getIndexer(scale);
-                final ScaledExpIndexer indexer2 = IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
+                final ScaledExpIndexer indexer1 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale);
+                final ScaledExpIndexer indexer2 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
 
                 final double base1 = indexer1.getBase();
                 final double base2 = indexer2.getBase();

@@ -5,7 +5,7 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.indexer.IndexerOption;
-import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
+import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import org.junit.Test;
 
 import java.util.List;
@@ -22,7 +22,7 @@ public class NrSketchSerializerTest {
     public void testIndexMakerCode() {
         for (IndexerOption option : IndexerOption.values()) {
             final byte code = NrSketchSerializer.getIndexerMakerCode(option);
-            final Function<Integer, ScaledExpIndexer> maker = NrSketchSerializer.getIndexerMakerFromCode(code);
+            final Function<Integer, ScaledIndexer> maker = NrSketchSerializer.getIndexerMakerFromCode(code);
             assertSame(option, maker);
         }
     }

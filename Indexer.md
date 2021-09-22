@@ -5,7 +5,7 @@
 The indexers are in its own [Indexer Java package](src/main/java/com/newrelic/nrsketch/indexer). The package is
 self-contained. It can be used without the rest of NrSketch. The class hierarchy in the package is:
 
-    BucketIndexer // Interface
+    ScaledIndexer // Interface
         |--- ScaledExpIndexer // Abstract class
                  |--- LogIndexer
                  |--- ExponentIndexer
@@ -13,10 +13,13 @@ self-contained. It can be used without the rest of NrSketch. The class hierarchy
                           |--- SubBucketLogIndexer
                           |--- SubBucketLookupIndexer
 
-The **BucketIndexer** interface is the root of the hierarchy. It defines the API of an indexer, which is very simple,
-basically, mapping a "double" value to a bucket index, and mapping a bucket index to the bucket's start and end bound.
+The **ScaledIndexer** interface is the root of the hierarchy. It defines the API between the indexer and NrSketch. The
+"scaled" property allows a histogram to down scale without introducing artifacts. The interface itself does not require
+the indexer to be exponential. In fact, a linear ScaledIndexer can be built and fed to NrSketch. NrSketch will work 
+on any ScaledIndexer implementation meeting the API contract.
 
-**ScaledExpIndexer** is the abstract base class for scaled exponential indexers, which have the following properties:
+**ScaledExpIndexer** is the abstract base class for scaled exponential indexers. It has the following
+properties:
 
 * bucket_lower_bound = base ^ bucket_index
 * base = 2 ^ (2 ^ -scale)

@@ -10,7 +10,7 @@ import static com.newrelic.nrsketch.indexer.DoubleFormat.MANTISSA_SHIFT;
 // where mantissa is normally between 1 and 2. This indexer divides the mantissa space into log scale subbuckets.
 // Bucket index is made of the concatenation of exponent and subbucket index.
 //
-public abstract class SubBucketIndexer extends ScaledIndexer {
+public abstract class SubBucketIndexer extends ScaledExpIndexer {
     protected final int exponentShift;
     protected final long subBucketIndexMask; // Subbucket index bits in bucket index.
     protected final long indexBiasOffset;

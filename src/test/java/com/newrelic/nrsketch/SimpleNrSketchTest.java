@@ -7,6 +7,7 @@ package com.newrelic.nrsketch;
 import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.DoubleFormat;
 import com.newrelic.nrsketch.indexer.IndexerOption;
+import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import org.junit.Test;
 
@@ -97,8 +98,8 @@ public class SimpleNrSketchTest {
         final double delta = 1e-12;
         for (int scale = 12; scale >= -3; scale--) {
             for (int scaleDelta = 1; scaleDelta <= 5; scaleDelta++) {
-                final ScaledIndexer indexer1 = IndexerOption.AUTO_SELECT.getIndexer(scale);
-                final ScaledIndexer indexer2 = IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
+                final ScaledExpIndexer indexer1 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale);
+                final ScaledExpIndexer indexer2 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
 
                 final double base1 = indexer1.getBase();
                 final double base2 = indexer2.getBase();

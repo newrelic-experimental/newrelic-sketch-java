@@ -8,7 +8,7 @@ import static com.newrelic.nrsketch.indexer.DoubleFormat.MANTISSA_SHIFT;
 
 // Handles negative scale histogram, where index can be simply derived from exponent in double representation.
 //
-public class ExponentIndexer extends ScaledIndexer {
+public class ExponentIndexer extends ScaledExpIndexer {
     private final int exponentShift;
 
     // Scale must be 0 or negative. base = 2 ^ (2 ^ -scale).

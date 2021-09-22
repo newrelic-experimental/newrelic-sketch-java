@@ -10,7 +10,7 @@ package com.newrelic.nrsketch.indexer;
 // In contrast, SubBucketLogIndexer can be used for scales up to 52 (max meaningful scale for double),
 // because it limits floating point computation in the small range of 1 to 2.
 
-public class LogIndexer extends ScaledIndexer {
+public class LogIndexer extends ScaledExpIndexer {
     // See also ScaledExpIndexer.getBucketStart() on avoiding using base as intermediate result.
     // index = log(value) / log(base)
     // = log(value) / log(2^(2^-scale))

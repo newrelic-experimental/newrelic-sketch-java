@@ -6,9 +6,12 @@ package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.DoubleFormat;
+import com.newrelic.nrsketch.indexer.IndexerOption;
+import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.function.Function;
 
 import static com.newrelic.nrsketch.SimpleNrSketchTest.EMPTY_BUCKET_LIST;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.INITIAL_ERROR;
@@ -28,27 +31,40 @@ public class ComboNrSketchTest {
     @Test
     public void testConstructors() {
         ComboNrSketch sketch = new ComboNrSketch();
-        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE);
+        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new ComboNrSketch(99);
-        assertParams(sketch, 99, SimpleNrSketch.DEFAULT_INIT_SCALE);
+        assertParams(sketch, 99, SimpleNrSketch.DEFAULT_INIT_SCALE, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
-        sketch = new ComboNrSketch(99, 33);
-        assertParams(sketch, 99, 33);
+        sketch = new ComboNrSketch(99, 43);
+        assertParams(sketch, 99, 43, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+
+        for (IndexerOption option : IndexerOption.values()) {
+            sketch = new ComboNrSketch(99, 7, option);
+            assertParams(sketch, 99, 7, option);
+
+            final NrSketch readback = verifySerialization(sketch, 193);
+            assertParams((ComboNrSketch) readback, 99, 7, option);
+        }
     }
 
-    private void assertParams(final ComboNrSketch sketch, final int expectedNumBucketsPerHistogram, final int expectedInitScale) {
+    private void assertParams(final ComboNrSketch sketch,
+                             final int expectedNumBucketsPerHistogram,
+                             final int expectedInitScale,
+                             final Function<Integer, ScaledExpIndexer> expectedIndexerMaker) {
         sketch.insert(10);
         sketch.insert(-20);
 
         final List<NrSketch> sketches = sketch.getHistograms();
         assertEquals(2, sketches.size());
 
-        assertEquals(expectedNumBucketsPerHistogram, sketches.get(0).getMaxNumOfBuckets());
-        assertEquals(expectedInitScale, ((SimpleNrSketch) sketches.get(0)).getScale());
+        for (NrSketch subSketch : sketches) {
+            final SimpleNrSketch simpleNrSketch = (SimpleNrSketch) subSketch;
 
-        assertEquals(expectedNumBucketsPerHistogram, sketches.get(1).getMaxNumOfBuckets());
-        assertEquals(expectedInitScale, ((SimpleNrSketch) sketches.get(1)).getScale());
+            assertEquals(expectedNumBucketsPerHistogram, simpleNrSketch.getMaxNumOfBuckets());
+            assertEquals(expectedInitScale, simpleNrSketch.getScale());
+            assertEquals(expectedIndexerMaker, simpleNrSketch.getIndexerMaker());
+        }
     }
 
     @Test

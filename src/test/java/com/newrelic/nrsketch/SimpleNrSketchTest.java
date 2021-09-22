@@ -12,6 +12,8 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
 
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertDoubleEquals;
@@ -29,16 +31,37 @@ public class SimpleNrSketchTest {
     @Test
     public void testConstructors() {
         SimpleNrSketch sketch = new SimpleNrSketch();
-        assertEquals(SimpleNrSketch.DEFAULT_MAX_BUCKETS, sketch.getMaxNumOfBuckets());
-        assertEquals(SimpleNrSketch.DEFAULT_INIT_SCALE, sketch.getScale());
+        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new SimpleNrSketch(99);
-        assertEquals(99, sketch.getMaxNumOfBuckets());
-        assertEquals(SimpleNrSketch.DEFAULT_INIT_SCALE, sketch.getScale());
+        assertParams(sketch, 99, SimpleNrSketch.DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
-        sketch = new SimpleNrSketch(99, 33);
-        assertEquals(99, sketch.getMaxNumOfBuckets());
-        assertEquals(33, sketch.getScale());
+        sketch = new SimpleNrSketch(99, 43);
+        assertParams(sketch, 99, 43, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+
+        for (boolean bucketHoldsPositiveNumbers : new boolean[]{true, false}) {
+            for (IndexerOption option : IndexerOption.values()) {
+                sketch = new SimpleNrSketch(99, 7, bucketHoldsPositiveNumbers, option);
+                assertParams(sketch, 99, 7, bucketHoldsPositiveNumbers, option);
+
+                final NrSketch readback = verifySerialization(sketch, 76);
+                assertParams((SimpleNrSketch) readback, 99, 7, bucketHoldsPositiveNumbers, option);
+            }
+        }
+    }
+
+    private void assertParams(final SimpleNrSketch sketch,
+                              final int expectedMaxNumBuckets,
+                              final int expectedInitScale,
+                              final boolean expectedBucketHoldsPositiveNumbers,
+                              final Function<Integer, ScaledExpIndexer> expectedIndexerMaker) {
+        sketch.insert(10);
+        sketch.insert(-20);
+
+        assertEquals(expectedMaxNumBuckets, sketch.getMaxNumOfBuckets());
+        assertEquals(expectedInitScale, sketch.getScale());
+        assertEquals(expectedBucketHoldsPositiveNumbers, sketch.isBucketHoldsPositiveNumbers());
+        assertEquals(expectedIndexerMaker, sketch.getIndexerMaker());
     }
 
     // Verify relative error for max/min contrast of 1M, with default number of buckets.

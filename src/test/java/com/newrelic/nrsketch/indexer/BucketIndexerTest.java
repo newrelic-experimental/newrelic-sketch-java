@@ -43,15 +43,15 @@ public class BucketIndexerTest {
 
     @Test
     public void testGetBase() {
-        assertEquals(1.0442737824274138, ScaledExpIndexer.getBase(4), 0);
-        assertEquals(1.0905077326652577, ScaledExpIndexer.getBase(3), 0);
-        assertEquals(1.189207115002721, ScaledExpIndexer.getBase(2), 0);
-        assertEquals(1.4142135623730951, ScaledExpIndexer.getBase(1), 0);
-        assertEquals(2, ScaledExpIndexer.getBase(0), 0);
-        assertEquals(4, ScaledExpIndexer.getBase(-1), 0);
-        assertEquals(16, ScaledExpIndexer.getBase(-2), 0);
-        assertEquals(256, ScaledExpIndexer.getBase(-3), 0);
-        assertEquals(65536, ScaledExpIndexer.getBase(-4), 0);
+        assertEquals(1.0442737824274138, ScaledIndexer.getBase(4), 0);
+        assertEquals(1.0905077326652577, ScaledIndexer.getBase(3), 0);
+        assertEquals(1.189207115002721, ScaledIndexer.getBase(2), 0);
+        assertEquals(1.4142135623730951, ScaledIndexer.getBase(1), 0);
+        assertEquals(2, ScaledIndexer.getBase(0), 0);
+        assertEquals(4, ScaledIndexer.getBase(-1), 0);
+        assertEquals(16, ScaledIndexer.getBase(-2), 0);
+        assertEquals(256, ScaledIndexer.getBase(-3), 0);
+        assertEquals(65536, ScaledIndexer.getBase(-4), 0);
     }
 
     private static void assertTwice(final long expected, final long expected2, final long actual) {
@@ -61,33 +61,33 @@ public class BucketIndexerTest {
 
     @Test
     public void testMinMaxScale() {
-        assertEquals(-11, ScaledExpIndexer.MIN_SCALE);
-        assertEquals(52, ScaledExpIndexer.MAX_SCALE);
+        assertEquals(-11, ScaledIndexer.MIN_SCALE);
+        assertEquals(52, ScaledIndexer.MAX_SCALE);
     }
 
     @Test
     public void testGetMaxIndex() {
         // Exactly at max exponent
-        assertTwice(1023, 0x3FF, ScaledExpIndexer.getMaxIndex(0));
-        assertTwice(16383, 0x3FFF, ScaledExpIndexer.getMaxIndex(4));
-        assertTwice(63, 0x3F, ScaledExpIndexer.getMaxIndex(-4));
+        assertTwice(1023, 0x3FF, ScaledIndexer.getMaxIndex(0));
+        assertTwice(16383, 0x3FFF, ScaledIndexer.getMaxIndex(4));
+        assertTwice(63, 0x3F, ScaledIndexer.getMaxIndex(-4));
 
-        assertEquals(0, ScaledExpIndexer.getMaxIndex(ScaledExpIndexer.MIN_SCALE));
+        assertEquals(0, ScaledIndexer.getMaxIndex(ScaledIndexer.MIN_SCALE));
     }
 
     @Test
     public void testGetMinIndex() {
         //System.out.println(String.format("0x%XL", ScaledExpIndexer.getMinIndex(-4)));
-        assertTwice(-1022, 0xFFFFFFFFFFFFFC02L, ScaledExpIndexer.getMinIndexNormal(0));
-        assertTwice(-16352, 0xFFFFFFFFFFFFC020L, ScaledExpIndexer.getMinIndexNormal(4));
-        assertTwice(-64, 0xFFFFFFFFFFFFFFC0L, ScaledExpIndexer.getMinIndexNormal(-4));
+        assertTwice(-1022, 0xFFFFFFFFFFFFFC02L, ScaledIndexer.getMinIndexNormal(0));
+        assertTwice(-16352, 0xFFFFFFFFFFFFC020L, ScaledIndexer.getMinIndexNormal(4));
+        assertTwice(-64, 0xFFFFFFFFFFFFFFC0L, ScaledIndexer.getMinIndexNormal(-4));
 
-        assertTwice(-1074, 0xFFFFFFFFFFFFFBCEL, ScaledExpIndexer.getMinIndex(0));
-        assertTwice(-17184, 0xFFFFFFFFFFFFBCE0L, ScaledExpIndexer.getMinIndex(4));
-        assertTwice(-68, 0xFFFFFFFFFFFFFFBCL, ScaledExpIndexer.getMinIndex(-4));
+        assertTwice(-1074, 0xFFFFFFFFFFFFFBCEL, ScaledIndexer.getMinIndex(0));
+        assertTwice(-17184, 0xFFFFFFFFFFFFBCE0L, ScaledIndexer.getMinIndex(4));
+        assertTwice(-68, 0xFFFFFFFFFFFFFFBCL, ScaledIndexer.getMinIndex(-4));
 
-        assertEquals(-1, ScaledExpIndexer.getMinIndexNormal(ScaledExpIndexer.MIN_SCALE));
-        assertEquals(-1, ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MIN_SCALE));
+        assertEquals(-1, ScaledIndexer.getMinIndexNormal(ScaledIndexer.MIN_SCALE));
+        assertEquals(-1, ScaledIndexer.getMinIndex(ScaledIndexer.MIN_SCALE));
     }
 
     @Test
@@ -166,7 +166,7 @@ public class BucketIndexerTest {
         }
     }
 
-    private static void testSelectedValues(final ScaledExpIndexer idx) {
+    private static void testSelectedValues(final ScaledIndexer idx) {
         final double base = idx.getBase();
         final double baseSquareRoot = Math.sqrt(base);
 
@@ -189,7 +189,7 @@ public class BucketIndexerTest {
         assertLongEquals(idx.getMinIndex(), idx.getBucketIndex(Double.MIN_VALUE), 0);
     }
 
-    private static void compareIndexers(final ScaledExpIndexer idx1, final ScaledExpIndexer idx2) {
+    private static void compareIndexers(final ScaledIndexer idx1, final ScaledIndexer idx2) {
         testSelectedValues(idx1);
         testSelectedValues(idx2);
 
@@ -205,7 +205,7 @@ public class BucketIndexerTest {
         }
     }
 
-    private static void compareAtValue(final ScaledExpIndexer idx1, final ScaledExpIndexer idx2, final double value) {
+    private static void compareAtValue(final ScaledIndexer idx1, final ScaledIndexer idx2, final double value) {
 
         final long index = idx1.getBucketIndex(value);
         final double base = idx1.getBase();
@@ -279,7 +279,7 @@ public class BucketIndexerTest {
     public void testSubBucketLogIndexerScales() {
         testScales(SubBucketLogIndexer::new,
                 1, // fromScale
-                ScaledExpIndexer.MAX_SCALE, // toScale
+                ScaledIndexer.MAX_SCALE, // toScale
                 Double.MIN_EXPONENT, // fromExponent
                 Double.MAX_EXPONENT, // toExponent
                 1, // roundTripIndexDelta
@@ -287,7 +287,7 @@ public class BucketIndexerTest {
 
         testScalesSubnormal(SubBucketLogIndexer::new,
                 1, // fromScale
-                ScaledExpIndexer.MAX_SCALE, // toScale
+                ScaledIndexer.MAX_SCALE, // toScale
                 1, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
     }
@@ -312,7 +312,7 @@ public class BucketIndexerTest {
     @Test
     public void testExponentIndexerScales() {
         testScales(ExponentIndexer::new,
-                ScaledExpIndexer.MIN_SCALE,
+                ScaledIndexer.MIN_SCALE,
                 0, // toScale
                 Double.MIN_EXPONENT, // fromExponent
                 Double.MAX_EXPONENT, // toExponent
@@ -320,13 +320,13 @@ public class BucketIndexerTest {
                 0); // powerOf2IndexDelta
 
         testScalesSubnormal(ExponentIndexer::new,
-                ScaledExpIndexer.MIN_SCALE,
+                ScaledIndexer.MIN_SCALE,
                 0, // toScale
                 0, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
     }
 
-    private void testScales(final Function<Integer, ScaledExpIndexer> indexerMaker,
+    private void testScales(final Function<Integer, ScaledIndexer> indexerMaker,
                             final int fromScale,
                             final int toScale,
                             final int fromExponent,
@@ -337,7 +337,7 @@ public class BucketIndexerTest {
         final double squareRootOf2 = Math.pow(2, .5);
 
         for (int scale = fromScale; scale <= toScale; ++scale) {
-            final ScaledExpIndexer indexer = indexerMaker.apply(scale);
+            final ScaledIndexer indexer = indexerMaker.apply(scale);
             final long indexesPerPowerOf2 = scale >= 0 ? (1L << scale) : 0;
 
             // Test bucket start at 1 and 2
@@ -351,9 +351,9 @@ public class BucketIndexerTest {
             assertEquals(0, indexer.getBucketIndex(1D));
 
             // Test min and max.
-            final long maxIndex = ScaledExpIndexer.getMaxIndex(scale);
-            final long minIndexNormal = ScaledExpIndexer.getMinIndexNormal(scale);
-            final long minIndex = ScaledExpIndexer.getMinIndex(scale);
+            final long maxIndex = ScaledIndexer.getMaxIndex(scale);
+            final long minIndexNormal = ScaledIndexer.getMinIndexNormal(scale);
+            final long minIndex = ScaledIndexer.getMinIndex(scale);
 
             // Max, min normal, min value to index
             assertLongEquals(maxIndex, indexer.getBucketIndex(Double.MAX_VALUE), powerOf2IndexDelta); // LogIndexer needs this delta
@@ -403,7 +403,7 @@ public class BucketIndexerTest {
         }
     }
 
-    private void testScalesSubnormal(final Function<Integer, ScaledExpIndexer> indexerMaker,
+    private void testScalesSubnormal(final Function<Integer, ScaledIndexer> indexerMaker,
                                      final int fromScale,
                                      final int toScale,
                                      final long roundTripIndexDelta,
@@ -412,7 +412,7 @@ public class BucketIndexerTest {
         final double squareRootOf2 = Math.pow(2, .5);
 
         for (int scale = fromScale; scale <= toScale; ++scale) {
-            final ScaledExpIndexer indexer = indexerMaker.apply(scale);
+            final ScaledIndexer indexer = indexerMaker.apply(scale);
             final long indexesPerPowerOf2 = scale >= 0 ? (1L << scale) : 0;
 
             for (int significantBits = 1; significantBits <= 52; significantBits++) {

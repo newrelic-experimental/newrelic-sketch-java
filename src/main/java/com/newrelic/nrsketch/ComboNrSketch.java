@@ -4,7 +4,7 @@
 
 package com.newrelic.nrsketch;
 
-import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
+import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +21,7 @@ import java.util.function.Function;
 public class ComboNrSketch implements NrSketch {
     private final int maxNumBucketsPerHistogram;
     private final int initialScale;
-    private final Function<Integer, ScaledExpIndexer> indexerMaker;
+    private final Function<Integer, ScaledIndexer> indexerMaker;
 
     // Holds negative and/or positive histograms. When both are present, negative one always precedes positive one.
     private final List<NrSketch> histograms;
@@ -45,7 +45,7 @@ public class ComboNrSketch implements NrSketch {
 
     public ComboNrSketch(final int maxNumBucketsPerHistogram,
                          final int initialScale,
-                         final Function<Integer, ScaledExpIndexer> indexerMaker) {
+                         final Function<Integer, ScaledIndexer> indexerMaker) {
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
         this.indexerMaker = indexerMaker;
@@ -56,7 +56,7 @@ public class ComboNrSketch implements NrSketch {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2")
     public ComboNrSketch(final int maxNumBucketsPerHistogram,
                          final int initialScale,
-                         final Function<Integer, ScaledExpIndexer> indexerMaker,
+                         final Function<Integer, ScaledIndexer> indexerMaker,
                          final List<NrSketch> histograms) {
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
@@ -212,7 +212,7 @@ public class ComboNrSketch implements NrSketch {
         return initialScale;
     }
 
-    public Function<Integer, ScaledExpIndexer> getIndexerMaker() {
+    public Function<Integer, ScaledIndexer> getIndexerMaker() {
         return indexerMaker;
     }
 

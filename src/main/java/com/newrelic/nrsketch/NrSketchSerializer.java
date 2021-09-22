@@ -5,7 +5,7 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.indexer.IndexerOption;
-import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
+import com.newrelic.nrsketch.indexer.ScaledIndexer;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -125,7 +125,7 @@ public class NrSketchSerializer {
 
         final boolean bucketHoldsPositiveNumbers = buffer.get() == 1;
         final int scale = buffer.get();
-        final Function<Integer, ScaledExpIndexer> indexerMaker = getIndexerMakerFromCode(buffer.get());
+        final Function<Integer, ScaledIndexer> indexerMaker = getIndexerMakerFromCode(buffer.get());
 
         final long countForNegatives = buffer.getLong();
         final long countForZero = buffer.getLong();
@@ -145,7 +145,7 @@ public class NrSketchSerializer {
                 sum);
     }
 
-    static byte getIndexerMakerCode(Function<Integer, ScaledExpIndexer> indexMaker) {
+    static byte getIndexerMakerCode(Function<Integer, ScaledIndexer> indexMaker) {
         // Using enum ordinal number is error prone. Somebody changing the order may not be aware that the order is
         // used in serialization format. Thus we hardcode the codes here.
         if (indexMaker == IndexerOption.LOG_INDEXER) {
@@ -161,7 +161,7 @@ public class NrSketchSerializer {
         }
     }
 
-    static Function<Integer, ScaledExpIndexer> getIndexerMakerFromCode(final byte code) {
+    static Function<Integer, ScaledIndexer> getIndexerMakerFromCode(final byte code) {
         switch (code) {
             case 0:
                 return IndexerOption.LOG_INDEXER;
@@ -222,7 +222,7 @@ public class NrSketchSerializer {
 
         final int maxNumOfBuckets = buffer.getInt();
         final int initialScale = buffer.get();
-        final Function<Integer, ScaledExpIndexer> indexerMaker = getIndexerMakerFromCode(buffer.get());
+        final Function<Integer, ScaledIndexer> indexerMaker = getIndexerMakerFromCode(buffer.get());
         final int histogramSize = buffer.get();
 
         if (histogramSize > 1) {

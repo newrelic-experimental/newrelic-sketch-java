@@ -9,7 +9,7 @@ package com.newrelic.nrsketch.indexer;
 //      bucketLowerBound = base ^ bucketIndex
 // This indexer only handles positive numbers. Behavior on zero and negative numbers is undefined.
 
-public abstract class ScaledExpIndexer implements BucketIndexer {
+public abstract class ScaledIndexer implements BucketIndexer {
     // Highest resolution. All mantissa bits are used to resolve buckets.
     public static final int MAX_SCALE = DoubleFormat.MANTISSA_BITS;
 
@@ -21,7 +21,7 @@ public abstract class ScaledExpIndexer implements BucketIndexer {
 
     protected int scale;
 
-    public ScaledExpIndexer(final int scale) {
+    public ScaledIndexer(final int scale) {
         this.scale = scale;
     }
 

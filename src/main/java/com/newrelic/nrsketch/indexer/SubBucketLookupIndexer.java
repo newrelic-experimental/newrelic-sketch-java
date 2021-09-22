@@ -31,7 +31,7 @@ public class SubBucketLookupIndexer extends SubBucketIndexer {
         private LookupTable(final int scale) {
             // "+ 1" to guarantee that linear bucket width is smaller than the smallest (1st) log bucket.
             // See Indexer.md for more info.
-            int linearScale = scale + 1;
+            final int linearScale = scale + 1;
 
             // Array size must fit in an Integer.
             if ((1L << linearScale) > Integer.MAX_VALUE) {

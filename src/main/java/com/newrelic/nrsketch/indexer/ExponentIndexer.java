@@ -37,16 +37,13 @@ public class ExponentIndexer extends ScaledExpIndexer {
 
     @Override
     public double getBucketStart(final long index) {
-        if (index < getMinIndexNormal(scale)) {
-            final long exponent = Math.max((index << exponentShift), DoubleFormat.MIN_SUBNORMAL_EXPONENT);
-            final int extraExponent = (int) (Double.MIN_EXPONENT - exponent);
-            return Double.longBitsToDouble(1L << (DoubleFormat.MANTISSA_BITS - extraExponent));
+        final long exponentFloor = index << exponentShift;
+        if (exponentFloor >= Double.MIN_EXPONENT) { // Normal double
+            return Double.longBitsToDouble((exponentFloor + DoubleFormat.EXPONENT_BIAS) << DoubleFormat.MANTISSA_BITS);
         }
-        // index << exponentShift produces a number ending with "scale" zero bits.
-        // But MIN_EXPONENT -1022 does not always end on "scale" zero bits.
-        // Thus we need to pull exponent to the actual min exponent.
-        //
-        final long exponent = Math.max((index << exponentShift), Double.MIN_EXPONENT);
-        return Double.longBitsToDouble((exponent + DoubleFormat.EXPONENT_BIAS) << DoubleFormat.MANTISSA_BITS);
+        // Subnormals
+        final long exponent = Math.max(exponentFloor, DoubleFormat.MIN_SUBNORMAL_EXPONENT);
+        final int extraExponent = (int) (Double.MIN_EXPONENT - exponent);
+        return Double.longBitsToDouble(1L << (DoubleFormat.MANTISSA_BITS - extraExponent));
     }
 }

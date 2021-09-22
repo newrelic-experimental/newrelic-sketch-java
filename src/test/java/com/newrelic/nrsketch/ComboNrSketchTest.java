@@ -44,10 +44,10 @@ public class ComboNrSketchTest {
         assertEquals(2, sketches.size());
 
         assertEquals(expectedNumBucketsPerHistogram, sketches.get(0).getMaxNumOfBuckets());
-        assertEquals(expectedInitScale, ((SimpleNrSketch)sketches.get(0)).getScale());
+        assertEquals(expectedInitScale, ((SimpleNrSketch) sketches.get(0)).getScale());
 
         assertEquals(expectedNumBucketsPerHistogram, sketches.get(1).getMaxNumOfBuckets());
-        assertEquals(expectedInitScale, ((SimpleNrSketch)sketches.get(1)).getScale());
+        assertEquals(expectedInitScale, ((SimpleNrSketch) sketches.get(1)).getScale());
     }
 
     @Test
@@ -244,7 +244,7 @@ public class ComboNrSketchTest {
         verifyHistogram(h1, 4, negativeSubnormal, 10, new Bucket[]{
                 new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
                 new Bucket(0.0, 0.0, 1), // bucket 2
-                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 3
                 new Bucket(1.0, 10.0, 1), // bucket 4
         });
 
@@ -252,25 +252,25 @@ public class ComboNrSketchTest {
         verifyHistogram(h1, 5, negativeSubnormal, 20, new Bucket[]{
                 new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
                 new Bucket(0.0, 0.0, 1), // bucket 2
-                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 3
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 3
                 new Bucket(1.0, 20.0, 2), // bucket 4
         });
 
         h1.insert(-50);
         verifyHistogram(h1, 6, -50, 20, new Bucket[]{
                 new Bucket(-50.0, -1.0, 1), // bucket 1
-                new Bucket(-2.2250738585072014E-308, -9.9E-322, 1), // bucket 2
+                new Bucket(-5.562684646268003E-309, -9.9E-322, 1), // bucket 2
                 new Bucket(0.0, 0.0, 1), // bucket 3
-                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 4
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 4
                 new Bucket(1.0, 20.0, 2), // bucket 5
         });
 
         h1.insert(-40);
         verifyHistogram(h1, 7, -50, 20, new Bucket[]{
                 new Bucket(-50.0, -1.0, 2), // bucket 1
-                new Bucket(-2.2250738585072014E-308, -9.9E-322, 1), // bucket 2
+                new Bucket(-5.562684646268003E-309, -9.9E-322, 1), // bucket 2
                 new Bucket(0.0, 0.0, 1), // bucket 3
-                new Bucket(4.9E-324, 2.2250738585072014E-308, 1), // bucket 4
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 4
                 new Bucket(1.0, 20.0, 2), // bucket 5
         });
     }

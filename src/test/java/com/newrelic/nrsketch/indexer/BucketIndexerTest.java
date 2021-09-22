@@ -61,6 +61,12 @@ public class BucketIndexerTest {
     }
 
     @Test
+    public void testMinMaxScale() {
+        assertEquals(-11, ScaledExpIndexer.MIN_SCALE);
+        assertEquals(52, ScaledExpIndexer.MAX_SCALE);
+    }
+
+    @Test
     public void testGetMaxIndex() {
         // Exactly at max exponent
         assertTwice(1023, 0x3FF, ScaledExpIndexer.getMaxIndex(0));
@@ -72,11 +78,14 @@ public class BucketIndexerTest {
 
     @Test
     public void testGetMinIndex() {
-        //System.out.println(String.format("%X", ScaledExpIndexer.getMinIndexNormal(4)));
-        // Exactly at min exponent
+        //System.out.println(String.format("0x%XL", ScaledExpIndexer.getMinIndex(-4)));
         assertTwice(-1022, 0xFFFFFFFFFFFFFC02L, ScaledExpIndexer.getMinIndexNormal(0));
         assertTwice(-16352, 0xFFFFFFFFFFFFC020L, ScaledExpIndexer.getMinIndexNormal(4));
         assertTwice(-64, 0xFFFFFFFFFFFFFFC0L, ScaledExpIndexer.getMinIndexNormal(-4));
+
+        assertTwice(-1074, 0xFFFFFFFFFFFFFBCEL, ScaledExpIndexer.getMinIndex(0));
+        assertTwice(-17184, 0xFFFFFFFFFFFFBCE0L, ScaledExpIndexer.getMinIndex(4));
+        assertTwice(-68, 0xFFFFFFFFFFFFFFBCL, ScaledExpIndexer.getMinIndex(-4));
 
         assertEquals(-1, ScaledExpIndexer.getMinIndexNormal(ScaledExpIndexer.MIN_SCALE));
         assertEquals(-1, ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MIN_SCALE));
@@ -125,12 +134,15 @@ public class BucketIndexerTest {
 
     @Test
     public void testGetLookupTable() {
+        int staticCount = 0;
         for (int scale = 1; scale <= SubBucketLookupIndexer.MAX_STATIC_TABLE_SCALE + 3; scale++) {
             final SubBucketLookupIndexer.LookupTable lookupTable = SubBucketLookupIndexer.getLookupTable(scale);
             if (scale >= SubBucketLookupIndexer.MIN_STATIC_TABLE_SCALE && scale <= SubBucketLookupIndexer.MAX_STATIC_TABLE_SCALE) {
                 assertSame(lookupTable, SubBucketLookupIndexer.STATIC_TABLES[scale - SubBucketLookupIndexer.MIN_STATIC_TABLE_SCALE]);
+                staticCount++;
             }
         }
+        assertEquals(4, staticCount);
     }
 
     @Test
@@ -341,13 +353,28 @@ public class BucketIndexerTest {
 
             // Test min and max.
             final long maxIndex = ScaledExpIndexer.getMaxIndex(scale);
-            final long minIndex = ScaledExpIndexer.getMinIndexNormal(scale);
+            final long minIndexNormal = ScaledExpIndexer.getMinIndexNormal(scale);
+            final long minIndex = ScaledExpIndexer.getMinIndex(scale);
 
+            // Max, min normal, min value to index
             assertLongEquals(maxIndex, indexer.getBucketIndex(Double.MAX_VALUE), powerOf2IndexDelta); // LogIndexer needs this delta
-            assertLongEquals(minIndex, indexer.getBucketIndex(Double.MIN_NORMAL), 0);
+            assertLongEquals(minIndexNormal, indexer.getBucketIndex(Double.MIN_NORMAL), 0);
+            assertLongEquals(minIndex, indexer.getBucketIndex(Double.MIN_VALUE), 0);
 
+            // Max, min normal round trip
             assertLongEquals(maxIndex, indexer.getBucketIndex(indexer.getBucketStart(maxIndex)), roundTripIndexDelta);
-            assertLongEquals(minIndex, indexer.getBucketIndex(indexer.getBucketStart(minIndex)), roundTripIndexDelta);
+            assertLongEquals(minIndexNormal, indexer.getBucketIndex(indexer.getBucketStart(minIndexNormal)), roundTripIndexDelta);
+
+            // Max index bucket end to value
+            assertDoubleEquals(Double.MAX_VALUE, indexer.getBucketEnd(maxIndex), 0);
+
+            // Min index to value. LogIndexer is not accurate on such small numbers
+            if (!(indexer instanceof LogIndexer)) {
+                assertDoubleEquals(Double.MIN_VALUE, indexer.getBucketStart(minIndex), 0);
+                if (scale > 0) {
+                    assertDoubleEquals(Double.MIN_NORMAL, indexer.getBucketStart(minIndexNormal), 0);
+                }
+            }
 
             // Test power of 2
             for (int exponent = fromExponent; exponent <= toExponent; ++exponent) {

@@ -45,13 +45,13 @@ public abstract class SubBucketIndexer extends ScaledExpIndexer {
 
     @Override
     public double getBucketStart(long index) {
-        if (index < getMinIndexNormal(scale)) {
-            return getBucketStartForSubnormal(index);
+        if (index >= getMinIndexNormal(scale)) { // Normal doubles
+            index += indexBiasOffset;
+            return Double.longBitsToDouble(
+                    ((index << exponentShift) & DoubleFormat.EXPONENT_MASK)
+                            | getSubBucketStartMantissa(index & subBucketIndexMask));
         }
-        index += indexBiasOffset;
-        return Double.longBitsToDouble(
-                ((index << exponentShift) & DoubleFormat.EXPONENT_MASK)
-                        | getSubBucketStartMantissa(index & subBucketIndexMask));
+        return getBucketStartForSubnormal(index);
     }
 
     // Input must be a subnormal double, where the mantissa is logically 0 to 1, instead of 1 to 2.

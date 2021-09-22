@@ -69,11 +69,6 @@ public class ConcurrentNrSketch implements NrSketch {
     }
 
     @Override
-    public synchronized long getCountForNegatives() {
-        return sketch.getCountForNegatives();
-    }
-
-    @Override
     public synchronized double getMin() {
         return sketch.getMin();
     }

@@ -63,7 +63,7 @@ public class ComboNrSketch implements NrSketch {
                     }
                 } else {
                     throw new IllegalArgumentException("Unknown subsketch class " + subSketch.getClass().getName());
-                };
+                }
                 break;
             case 2:
                 negativeHistogram = histograms.get(0);
@@ -207,11 +207,6 @@ public class ComboNrSketch implements NrSketch {
     @Override
     public long getCount() {
         return mergeField(0L, NrSketch::getCount, Long::sum);
-    }
-
-    @Override
-    public long getCountForNegatives() {
-        return mergeField(0L, NrSketch::getCountForNegatives, Long::sum);
     }
 
     @Override

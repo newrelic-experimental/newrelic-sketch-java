@@ -27,9 +27,6 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
     // Returns total count across all buckets
     long getCount();
 
-    // Returns count for negative numbers
-    long getCountForNegatives();
-
     // Returns min of inserted values. Returns NaN if histogram is empty.
     double getMin();
 
@@ -43,8 +40,9 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
     // - An implementation may reuse Bucket objects when returning from iterator next() call.
     //      Caller must evaluate the bucket before calling next() again.
     // - An implementation must return buckets sorted by startValue from low to high.
-    // - Single value bucket (startValue == endValue) allowed.
+    // - Buckets shall not overlap.
     // - Gap between endValue and next bucket's startValue allowed.
+    // - Single value bucket (startValue == endValue) allowed.
     // - Empty bucket (count == 0) allowed
     class Bucket {
         public double startValue;
@@ -55,6 +53,10 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
             this.startValue = startValue;
             this.endValue = endValue;
             this.count = count;
+        }
+
+        public Bucket makeCopy() {
+            return new Bucket(startValue, endValue, count);
         }
 
         @Override

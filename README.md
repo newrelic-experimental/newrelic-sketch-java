@@ -69,6 +69,7 @@ features:
 * Histogram merge code included
 * Percentile calculation code included
 * Serialization and deserialization code included
+* Full "double" range, including subnormal numbers are supported, at all meaningful scales (-11 to 52, inclusive).
 
 With a reasonable default number of buckets of 320, a histogram can fit a dataset with contrast (maxValue / minValue) up
 to 1M at scale 4, for a 2.17% relative error. Here contrast = 2 ^ (numBuckets / 2^scale). When contrast is smaller, the

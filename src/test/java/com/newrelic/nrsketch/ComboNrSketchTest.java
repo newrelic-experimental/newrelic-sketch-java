@@ -17,6 +17,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ComboNrSketchTest {
     private static final double SCALE2_ERROR = 0.08642723372588978;
@@ -43,10 +44,10 @@ public class ComboNrSketchTest {
         assertEquals(2, sketches.size());
 
         assertEquals(expectedNumBucketsPerHistogram, sketches.get(0).getMaxNumOfBuckets());
-        assertEquals(expectedInitScale, ((SimpleNrSketch)sketches.get(0)).getScale());
+        assertEquals(expectedInitScale, ((SimpleNrSketch) sketches.get(0)).getScale());
 
         assertEquals(expectedNumBucketsPerHistogram, sketches.get(1).getMaxNumOfBuckets());
-        assertEquals(expectedInitScale, ((SimpleNrSketch)sketches.get(1)).getScale());
+        assertEquals(expectedInitScale, ((SimpleNrSketch) sketches.get(1)).getScale());
     }
 
     @Test
@@ -212,6 +213,69 @@ public class ComboNrSketchTest {
     }
 
     @Test
+    public void testSubnormals() {
+        final ComboNrSketch h1 = new ComboNrSketch(10);
+
+        final double positiveSubnormal = DoubleFormat.makeDouble(0, 0, 100);
+        assertTrue(positiveSubnormal > 0 && positiveSubnormal < Double.MIN_NORMAL);
+
+        final double negativeSubnormal = DoubleFormat.makeDouble(1, 0, 200);
+        assertTrue(negativeSubnormal < 0 && negativeSubnormal > Double.MIN_NORMAL * -1);
+
+        h1.insert(positiveSubnormal);
+        verifyHistogram(h1, 1, positiveSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(positiveSubnormal, positiveSubnormal, 1), // bucket 1
+        });
+
+        h1.insert(negativeSubnormal);
+        verifyHistogram(h1, 2, negativeSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(4.94E-322, 4.94E-322, 1), // bucket 2
+        });
+
+        h1.insert(0);
+        verifyHistogram(h1, 3, negativeSubnormal, positiveSubnormal, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-322, 4.94E-322, 1), // bucket 3
+        });
+
+        h1.insert(10);
+        verifyHistogram(h1, 4, negativeSubnormal, 10, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 3
+                new Bucket(1.0, 10.0, 1), // bucket 4
+        });
+
+        h1.insert(20);
+        verifyHistogram(h1, 5, negativeSubnormal, 20, new Bucket[]{
+                new Bucket(-9.9E-322, -9.9E-322, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 2
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 3
+                new Bucket(1.0, 20.0, 2), // bucket 4
+        });
+
+        h1.insert(-50);
+        verifyHistogram(h1, 6, -50, 20, new Bucket[]{
+                new Bucket(-50.0, -1.0, 1), // bucket 1
+                new Bucket(-5.562684646268003E-309, -9.9E-322, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 4
+                new Bucket(1.0, 20.0, 2), // bucket 5
+        });
+
+        h1.insert(-40);
+        verifyHistogram(h1, 7, -50, 20, new Bucket[]{
+                new Bucket(-50.0, -1.0, 2), // bucket 1
+                new Bucket(-5.562684646268003E-309, -9.9E-322, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+                new Bucket(4.9E-324, 5.562684646268003E-309, 1), // bucket 4
+                new Bucket(1.0, 20.0, 2), // bucket 5
+        });
+    }
+
+    @Test
     public void testLargeNumbers() {
         final ComboNrSketch histogram = new ComboNrSketch(320);
 
@@ -308,9 +372,8 @@ public class ComboNrSketchTest {
         assertEquals(SCALE1_ERROR, histogram.getPercentileRelativeError(), 0);
     }
 
-    private static void verifyAggregates(final NrSketch histogram, final long expectedNegativeCount, final double expectedSum, final int expectedMaxNumOfBuckets) {
+    private static void verifyAggregates(final NrSketch histogram, final double expectedSum, final int expectedMaxNumOfBuckets) {
         // count, min, max are already tested in verifyHistogram().
-        assertEquals(expectedNegativeCount, histogram.getCountForNegatives());
         assertEquals(expectedSum, histogram.getSum(), 0);
         assertEquals(expectedMaxNumOfBuckets, histogram.getMaxNumOfBuckets());
     }
@@ -331,7 +394,7 @@ public class ComboNrSketchTest {
                 new Bucket(-4.000000, -2.000000, 2), // bucket 6
                 new Bucket(-2.000000, -1.000000, 1), // bucket 7
         });
-        verifyAggregates(negativeOnly1, 100, -5050, 10);
+        verifyAggregates(negativeOnly1, -5050, 10);
 
         final ComboNrSketch negativeOnly2 = new ComboNrSketch(10);
         insertData(negativeOnly2, -150, -50, 100);
@@ -344,7 +407,7 @@ public class ComboNrSketchTest {
                 new Bucket(-64.0, -53.81737057623773, 10), // bucket 6
                 new Bucket(-53.81737057623773, -51.0, 3), // bucket 7
         });
-        verifyAggregates(negativeOnly2, 100, -10050.0, 10);
+        verifyAggregates(negativeOnly2, -10050.0, 10);
 
         final ComboNrSketch positiveOnly1 = new ComboNrSketch(10);
         insertData(positiveOnly1, 0, 100, 100);
@@ -358,7 +421,7 @@ public class ComboNrSketchTest {
                 new Bucket(32.000000, 64.000000, 32), // bucket 7
                 new Bucket(64.000000, 99.000000, 36), // bucket 8
         });
-        verifyAggregates(positiveOnly1, 0, 4950.0, 10);
+        verifyAggregates(positiveOnly1, 4950.0, 10);
 
         final ComboNrSketch positiveOnly2 = new ComboNrSketch(10);
         insertData(positiveOnly2, 50, 150, 100);
@@ -371,7 +434,7 @@ public class ComboNrSketchTest {
                 new Bucket(107.63474115247546, 128.0, 20), // bucket 6
                 new Bucket(128.0, 149.0, 22), // bucket 7
         });
-        verifyAggregates(positiveOnly2, 0, 9950.0, 10);
+        verifyAggregates(positiveOnly2, 9950.0, 10);
 
         final ComboNrSketch both1 = new ComboNrSketch(10);
         insertData(both1, -100, 100, 200);
@@ -392,7 +455,7 @@ public class ComboNrSketchTest {
                 new Bucket(32.000000, 64.000000, 32), // bucket 14
                 new Bucket(64.000000, 99.000000, 36), // bucket 15
         });
-        verifyAggregates(both1, 100, -100.0, 20);
+        verifyAggregates(both1, -100.0, 20);
 
         final ComboNrSketch both2 = new ComboNrSketch(10);
         insertData(both2, -50, 150, 200);
@@ -413,7 +476,7 @@ public class ComboNrSketchTest {
                 new Bucket(64.000000, 128.000000, 64), // bucket 14
                 new Bucket(128.000000, 149.000000, 22), // bucket 15
         });
-        verifyAggregates(both2, 50, 9900.0, 20);
+        verifyAggregates(both2, 9900.0, 20);
 
         verifyHistogram(empty1.merge(empty2), 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
 

@@ -11,6 +11,12 @@ public class DoubleFormat {
     public static final int EXPONENT_BITS = 11;
     public static final long EXPONENT_BIAS = 1023;
 
+    // Number of bits to the left of mantissa
+    public static final int MANTISSA_SHIFT = DoubleFormat.EXPONENT_BITS + 1; // Exponent plus one sign bit
+
+    // Subnormal extends double min from 2^-1022 to 2^1074.
+    public static final int MIN_SUBNORMAL_EXPONENT = Double.MIN_EXPONENT - DoubleFormat.MANTISSA_BITS;
+
     public static final long EXPONENT_MASK = 0x7ff0000000000000L;
     public static final long MANTISSA_MASK = 0x000fffffffffffffL;
 

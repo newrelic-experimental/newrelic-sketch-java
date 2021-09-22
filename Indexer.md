@@ -2,8 +2,8 @@
 
 ## Class Hierarchy
 
-The indexers are in its own [Indexer Java package](src/main/java/com/newrelic/nrsketch/indexer). The package is self-contained.
-It can be used without the rest of NrSketch. The class hierarchy in the package is:
+The indexers are in its own [Indexer Java package](src/main/java/com/newrelic/nrsketch/indexer). The package is
+self-contained. It can be used without the rest of NrSketch. The class hierarchy in the package is:
 
     BucketIndexer // Interface
         |--- ScaledExpIndexer // Abstract class
@@ -21,8 +21,8 @@ basically, mapping a "double" value to a bucket index, and mapping a bucket inde
 * bucket_lower_bound = base ^ bucket_index
 * base = 2 ^ (2 ^ -scale)
 
-**SubBucketIndexer** is the abstract base class for all subBucket indexers, which divide the
-mantissa into log scale subbuckets for each binary exponent in "double". It works only on scales greater than 0.
+**SubBucketIndexer** is the abstract base class for all subBucket indexers, which divide the mantissa into log scale
+subbuckets for each binary exponent in "double". It works only on scales greater than 0.
 
 The followings are concrete classes you can actually instantiate:
 
@@ -60,20 +60,11 @@ SubBucketLookupIndexer.
 Note that the LogIndexer class is not used by AUTO_SELECT at all. It was written mostly as a reference to test other
 indexers.
 
-## Subnormal numbers
+### Special features
 
-The subbucket indexers (SubBucketLogIndexer and SubBucketLookupIndexer) and the ExponentIndexer do not have special
-logic for subnormal numbers. Thus they do not satisfy the "bound = base ^ index" formula in the subnormal range (see
-SubBucketIndexer.java for details). The LogIndexer does handle subnormal numbers properly. To be standard conforming,
-NrSketch folds subnormal numbers into the special bucket for 0, instead of the indexed buckets. This is not a limitation
-of the scaled histogram or the subbucket methods. NrSketch does this only because:
-
-* The author is too lazy to write the special subnormal logic
-* Subnormal numbers are rarely used. They are at the rarified bottom end of the "double" range. They extend the double
-  range at the cost of fewer significant digits.
-* Supporting subnormal numbers will add a small performance cost to the subbucket indexers. They will need a "if
-  subnormal"
-  branch in the critical path.
+* The indexers return a 64 bit "long" index. All double values can be mapped to an index, at all meaningful scales
+  (-11 to 52, inclusive).
+* All indexers handle subnormal numbers properly, conforming to the bound and base formula.
 
 ## How the lookup indexer works
 
@@ -88,10 +79,8 @@ range is also divided into 16 linear subbuckets, shown as black ticks along the 
 ![Lookup table chart](./LookupTable.svg)
 
 With 2 times more linear subbuckets than log scale subbuckets, linear subbuckets are narrower. A linear subbucket is
-either completely enclosed in a log subbucket, or spans 2 log subbuckets. The linear to log bucket ratio can probably be
-mathematically proven. The code empirically increases the number of linear buckets until linear bucket width is equal to
-or less than the width of the first log bucket (therefore any log bucket, because log bucket width increases
-monotonically). The runs always return a ratio of 2.
+either completely enclosed in a log subbucket, or spans 2 log subbuckets. The linear to log bucket ratio is proven later
+in this doc in the [Linear to log bucket ratio](#linear-to-log-bucket-ratio) section.
 
 Two lookup tables are used. The first one, logBucketIndexArray is indexed by linear subbucket index. The array content
 is the log bucket index where start of the linear bucket falls into. The 2nd one, logBucketEndArray is indexed by log
@@ -136,3 +125,40 @@ static arrays computed on program start or defined at compile time.
 If we publish the logBucketEndArray content for commonly used scales, all implementations using the published array will
 produce consistent result on any platform. In contrast, calling Math.log() may produce different results on boundary
 values due to differences in floating point processing and log() function implementation.
+
+### Linear to log bucket ratio
+
+With 2 times more linear subbuckets than log scale subbuckets, a linear subbucket is always narrower than any log scale
+subbucket. Below is an informal proof:
+
+Because log bucket width increases monotonically, we only need to prove that linear bucket width is smaller than the 1st
+log bucket width.
+
+Let N be the number of log scale buckets. We have  
+N log buckets: base ^ N = 2, first bucket ends at base  
+2N linear buckets: bucketWidth = 1/2N, First linear bucket ends at 1 + 1/2N
+
+If we can prove that (1 + 1/2N) ^ N < 2, then we have proven that 1 + 1/2N < base (linear bucket width is smaller than
+log scale bucket width).
+
+To prove (1 + 1/2N) ^ N < 2  
+we apply square on both sides of "<": (1 + 1/2N) ^ 2N < 4
+
+(1 + 1/2N) ^ 2N matches the definition of [Euler' number e](https://en.wikipedia.org/wiki/E_(mathematical_constant)),
+which is defined as (1 + 1/n)^n when n approaches infinity. The (1 + 1/n)^n sequence represents
+the [compound interest sequence](https://en.wikipedia.org/wiki/E_(mathematical_constant)#Compound_interest), which grows
+toward e as n grows:
+
+| n        | (1 + 1/n)^n |
+| -------- | ----------- |
+| 1        | 2.0000      |
+| 2        | 2.2500      |
+| 3        | 2.3704      |
+| 4        | 2.4414      |
+| 10       | 2.5937      |
+| 100      | 2.7048      |
+| 1000     | 2.7169      |
+| infinity | 2.7182 ...  |
+
+As shown above, the sequence is always below 4. This we have proven that linear bucket width is smaller than log bucket
+width. 

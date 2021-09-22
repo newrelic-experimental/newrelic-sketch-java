@@ -28,19 +28,6 @@ public class NrSketchSerializerTest {
     }
 
     @Test
-    public void testIndexerOptions() {
-        for (IndexerOption option : IndexerOption.values()) {
-            final SimpleNrSketch sketch = new SimpleNrSketch(20, 10, true, option);
-            assertEquals(option, sketch.getIndexerMaker());
-            verifySerialization(sketch, 75);
-            sketch.insert(100);
-            sketch.insert(200);
-            final NrSketch readback = verifySerialization(sketch, 92);
-            assertEquals(option, ((SimpleNrSketch) readback).getIndexerMaker());
-        }
-    }
-
-    @Test
     public void negativeScaleSimpleNrSketchTest() {
         final int scale = -2;
         final SimpleNrSketch sketch = new SimpleNrSketch(10, scale);
@@ -67,7 +54,7 @@ public class NrSketchSerializerTest {
         assertEquals(scale, ((SimpleNrSketch) sketches.get(0)).getScale());
         assertEquals(scale, ((SimpleNrSketch) sketches.get(1)).getScale());
 
-        final NrSketch readback = verifySerialization(sketch, 192);
+        final NrSketch readback = verifySerialization(sketch, 193);
         readback.insert(2000);
         assertEquals(3, readback.getCount());
         sketches = ((ComboNrSketch) readback).getHistograms();

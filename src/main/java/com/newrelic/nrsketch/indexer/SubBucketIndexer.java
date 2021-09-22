@@ -4,9 +4,7 @@
 
 package com.newrelic.nrsketch.indexer;
 
-import com.newrelic.nrsketch.DoubleFormat;
-
-import static com.newrelic.nrsketch.DoubleFormat.MANTISSA_SHIFT;
+import static com.newrelic.nrsketch.indexer.DoubleFormat.MANTISSA_SHIFT;
 
 // IEEE format represents a double as a binary floating point number in the form of mantissa * 2^exponent,
 // where mantissa is normally between 1 and 2. This indexer divides the mantissa space into log scale subbuckets.
@@ -32,7 +30,12 @@ public abstract class SubBucketIndexer extends ScaledExpIndexer {
 
     abstract long getSubBucketStartMantissa(final long subBucketIndex);
 
-    // Sign bit is ignored.
+    // Normal vs subnormal numbers.
+    // Normal:    value = 1.XXXX * 2^exponent, where XXXX is mantissa (52 bit) and "1." in mantissa is implicit.
+    // Subnormal: value = 0.XXXX * 2^-1022, where -1022 is Double.MIN_EXPONENT and XXXX is mantissa (52 bit)
+    // Physically, the exponent field in a subnormal double is 0, below the lowest normal exponent (physically 1, logically -1022)
+    // Thus a physical exponent of 0 indicates subnormal double or zero. Since the indexer does not handle 0,
+    // the 0 exponent condition is used to detect subnormals.
     @Override
     public long getBucketIndex(final double d) {
         final long asLong = Double.doubleToRawLongBits(d);
@@ -54,9 +57,6 @@ public abstract class SubBucketIndexer extends ScaledExpIndexer {
         return getBucketStartForSubnormal(index);
     }
 
-    // Input must be a subnormal double, where the mantissa is logically 0 to 1, instead of 1 to 2.
-    // This function normalizes the exponent and mantissa before computing the index.
-    //
     private long getBucketIndexForSubnormalAsLong(final long asLong) {
         final int extraExponent = Long.numberOfLeadingZeros(asLong << MANTISSA_SHIFT) + 1;
         final long exponent = Double.MIN_EXPONENT - extraExponent; // Normalized

@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // This file is part of the NrSketch project.
 
-package com.newrelic.nrsketch;
+package com.newrelic.nrsketch.indexer;
 
+import com.newrelic.nrsketch.indexer.DoubleFormat;
 import org.junit.Test;
 
-import static com.newrelic.nrsketch.DoubleFormat.NEGATIVE_SIGN;
-import static com.newrelic.nrsketch.DoubleFormat.POSITIVE_SIGN;
+import static com.newrelic.nrsketch.indexer.DoubleFormat.NEGATIVE_SIGN;
+import static com.newrelic.nrsketch.indexer.DoubleFormat.POSITIVE_SIGN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

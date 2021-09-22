@@ -4,9 +4,7 @@
 
 package com.newrelic.nrsketch.indexer;
 
-import com.newrelic.nrsketch.DoubleFormat;
-
-import static com.newrelic.nrsketch.DoubleFormat.MANTISSA_SHIFT;
+import static com.newrelic.nrsketch.indexer.DoubleFormat.MANTISSA_SHIFT;
 
 // Handles negative scale histogram, where index can be simply derived from exponent in double representation.
 //
@@ -22,7 +20,7 @@ public class ExponentIndexer extends ScaledExpIndexer {
         this.exponentShift = -scale;
     }
 
-    // Sign bit of value is ignored
+    // See SubBucketIndexer comments for subnormal format.
     @Override
     public long getBucketIndex(final double value) {
         final long asLong = Double.doubleToRawLongBits(value);

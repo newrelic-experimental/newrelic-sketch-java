@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // This file is part of the NrSketch project.
 
-package com.newrelic.nrsketch;
+package com.newrelic.nrsketch.indexer;
 
 // Functions to manipulate double in its native binary format.
 // See https://en.wikipedia.org/wiki/Double-precision_floating-point_format and Double.doubleToRawLongBits()

@@ -4,6 +4,7 @@
 
 package com.newrelic.nrsketch;
 
+import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,6 +21,7 @@ import java.util.function.Function;
 public class ComboNrSketch implements NrSketch {
     private final int maxNumBucketsPerHistogram;
     private final int initialScale;
+    private final Function<Integer, ScaledExpIndexer> indexerMaker;
 
     // Holds negative and/or positive histograms. When both are present, negative one always precedes positive one.
     private final List<NrSketch> histograms;
@@ -38,16 +40,27 @@ public class ComboNrSketch implements NrSketch {
     }
 
     public ComboNrSketch(final int maxNumBucketsPerHistogram, final int initialScale) {
+        this(maxNumBucketsPerHistogram, initialScale, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+    }
+
+    public ComboNrSketch(final int maxNumBucketsPerHistogram,
+                         final int initialScale,
+                         final Function<Integer, ScaledExpIndexer> indexerMaker) {
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
+        this.indexerMaker = indexerMaker;
         histograms = new ArrayList<>(2);
     }
 
     // For deserialization only
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2")
-    public ComboNrSketch(final int maxNumBucketsPerHistogram, final int initialScale, final List<NrSketch> histograms) {
+    public ComboNrSketch(final int maxNumBucketsPerHistogram,
+                         final int initialScale,
+                         final Function<Integer, ScaledExpIndexer> indexerMaker,
+                         final List<NrSketch> histograms) {
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
+        this.indexerMaker = indexerMaker;
         this.histograms = histograms;
 
         switch (histograms.size()) {
@@ -84,7 +97,7 @@ public class ComboNrSketch implements NrSketch {
 
     private NrSketch getOrCreatePositveHistogram() {
         if (positiveHistogram == null) {
-            setPositiveHistogram(new SimpleNrSketch(maxNumBucketsPerHistogram, initialScale));
+            setPositiveHistogram(new SimpleNrSketch(maxNumBucketsPerHistogram, initialScale, true, indexerMaker));
         }
         return positiveHistogram;
     }
@@ -99,7 +112,7 @@ public class ComboNrSketch implements NrSketch {
 
     private NrSketch getOrCreateNegativeHistogram() {
         if (negativeHistogram == null) {
-            setNegativeHistogram(SimpleNrSketch.newNegativeHistogram(maxNumBucketsPerHistogram, initialScale));
+            setNegativeHistogram(new SimpleNrSketch(maxNumBucketsPerHistogram, initialScale, false, indexerMaker));
         }
         return negativeHistogram;
     }
@@ -197,6 +210,10 @@ public class ComboNrSketch implements NrSketch {
 
     public int getInitialScale() {
         return initialScale;
+    }
+
+    public Function<Integer, ScaledExpIndexer> getIndexerMaker() {
+        return indexerMaker;
     }
 
     @Override

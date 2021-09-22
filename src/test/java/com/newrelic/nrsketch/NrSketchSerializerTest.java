@@ -67,7 +67,7 @@ public class NrSketchSerializerTest {
         assertEquals(scale, ((SimpleNrSketch) sketches.get(0)).getScale());
         assertEquals(scale, ((SimpleNrSketch) sketches.get(1)).getScale());
 
-        final NrSketch readback = verifySerialization(sketch, 192);
+        final NrSketch readback = verifySerialization(sketch, 193);
         readback.insert(2000);
         assertEquals(3, readback.getCount());
         sketches = ((ComboNrSketch) readback).getHistograms();

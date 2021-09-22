@@ -180,6 +180,7 @@ public class NrSketchSerializer {
         buffer.putShort(COMBO_NRSKETCH_VERSION);
         buffer.putInt(sketch.getMaxNumBucketsPerHistogram());
         buffer.put((byte) sketch.getInitialScale()); // 1 byte is enough for any scale
+        buffer.put(getIndexerMakerCode(sketch.getIndexerMaker()));
         buffer.put((byte) sketch.getHistograms().size());
 
         // When there is only 1 histogram, we can load summary directly from it. So no need for a separate summary section.
@@ -200,6 +201,7 @@ public class NrSketchSerializer {
         int size = Short.BYTES  // Version
                 + Integer.BYTES // getMaxNumOfBuckets
                 + Byte.BYTES    // getInitialScale
+                + Byte.BYTES    // indexer maker code
                 + Byte.BYTES;   // histogram list size
 
         if (sketch.getHistograms().size() > 1) {
@@ -220,6 +222,7 @@ public class NrSketchSerializer {
 
         final int maxNumOfBuckets = buffer.getInt();
         final int initialScale = buffer.get();
+        final Function<Integer, ScaledExpIndexer> indexerMaker = getIndexerMakerFromCode(buffer.get());
         final int histogramSize = buffer.get();
 
         if (histogramSize > 1) {
@@ -232,10 +235,7 @@ public class NrSketchSerializer {
             subSketches.add(deserializeNrSketch(buffer));
         }
 
-        return new ComboNrSketch(
-                maxNumOfBuckets,
-                initialScale,
-                subSketches);
+        return new ComboNrSketch(maxNumOfBuckets, initialScale, indexerMaker, subSketches);
     }
 
     public static void serializeConcurrentNrSketch(final ConcurrentNrSketch sketch, final ByteBuffer buffer) {
@@ -248,7 +248,7 @@ public class NrSketchSerializer {
                 + getNrSketchSerializeBufferSize(sketch.getSketch());
     }
 
-    public static ConcurrentNrSketch  deserializeConcurrentNrSketch(final ByteBuffer buffer) {
+    public static ConcurrentNrSketch deserializeConcurrentNrSketch(final ByteBuffer buffer) {
         final short version = buffer.getShort();
         if (version != CONCURRENT_NRSKETCH_VERSION) {
             throw new RuntimeException("Unknown ConcurrentNrSketch version " + version);

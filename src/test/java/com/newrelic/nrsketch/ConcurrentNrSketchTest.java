@@ -46,7 +46,7 @@ public class ConcurrentNrSketchTest {
 
         final ConcurrentNrSketch sketch = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
 
-        verifySerialization(sketch, 77, 10); // Test empty sketch
+        verifySerialization(sketch, 77, 11); // Test empty sketch
 
         final ExecutorService threadPool = Executors.newFixedThreadPool(numThreads);
 
@@ -77,7 +77,7 @@ public class ConcurrentNrSketchTest {
 
         assertEquals(SCALE4_ERROR, sketch.getPercentileRelativeError(), 0);
 
-        verifySerialization(sketch, 344, 352);
+        verifySerialization(sketch, 344, 353);
     }
 
     @Test
@@ -98,7 +98,7 @@ public class ConcurrentNrSketchTest {
         // Test that we can iterate inside a synchronized block.
         synchronized (histogram) {
             verifyHistogram(histogram, 100, 0, 99, buckets);
-            verifySerialization(histogram, 84, 92);
+            verifySerialization(histogram, 84, 93);
         }
     }
 
@@ -139,7 +139,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 72), // bucket 8
         });
 
-        verifySerialization(h1, 84, 92);
+        verifySerialization(h1, 84, 93);
     }
 
     @Test
@@ -179,7 +179,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 72), // bucket 8
         });
 
-        verifySerialization(h1, 84, 92);
+        verifySerialization(h1, 84, 93);
     }
 
     public static void verifySerialization(final ConcurrentNrSketch sketch, final int expectedSimpleNrSketchBufferSize, final int expectedComboSketchBufferSize) {

@@ -4,8 +4,6 @@
 
 package com.newrelic.nrsketch.indexer;
 
-import com.newrelic.nrsketch.DoubleFormat;
-
 // Convert linear subbuckets to log subbuckets via lookup tables.
 // This indexer is fast because it uses simple integer operations for mapping,
 // but it costs more space because of the lookup tables.

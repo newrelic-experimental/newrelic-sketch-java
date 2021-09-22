@@ -4,9 +4,7 @@
 
 package com.newrelic.nrsketch.indexer;
 
-import com.newrelic.nrsketch.DoubleFormat;
-
-import static com.newrelic.nrsketch.DoubleFormat.MANTISSA_SHIFT;
+import static com.newrelic.nrsketch.indexer.DoubleFormat.MANTISSA_SHIFT;
 
 // Handles negative scale histogram, where index can be simply derived from exponent in double representation.
 //

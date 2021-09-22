@@ -4,7 +4,6 @@
 
 package com.newrelic.nrsketch.indexer;
 
-import com.newrelic.nrsketch.DoubleFormat;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.Test;
 

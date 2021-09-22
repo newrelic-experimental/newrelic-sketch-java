@@ -4,8 +4,6 @@
 
 package com.newrelic.nrsketch.indexer;
 
-import com.newrelic.nrsketch.DoubleFormat;
-
 // Base class for scaled base2 exponential histogram, where
 //      base = 2 ^ (2 ^ -scale)
 //      bucketLowerBound = base ^ bucketIndex

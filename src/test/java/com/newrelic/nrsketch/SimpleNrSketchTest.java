@@ -5,6 +5,7 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.NrSketch.Bucket;
+import com.newrelic.nrsketch.indexer.DoubleFormat;
 import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import org.junit.Test;

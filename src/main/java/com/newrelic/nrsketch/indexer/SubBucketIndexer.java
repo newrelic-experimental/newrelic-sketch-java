@@ -4,9 +4,7 @@
 
 package com.newrelic.nrsketch.indexer;
 
-import com.newrelic.nrsketch.DoubleFormat;
-
-import static com.newrelic.nrsketch.DoubleFormat.MANTISSA_SHIFT;
+import static com.newrelic.nrsketch.indexer.DoubleFormat.MANTISSA_SHIFT;
 
 // IEEE format represents a double as a binary floating point number in the form of mantissa * 2^exponent,
 // where mantissa is normally between 1 and 2. This indexer divides the mantissa space into log scale subbuckets.

@@ -5,6 +5,7 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.NrSketch.Bucket;
+import com.newrelic.nrsketch.indexer.DoubleFormat;
 import org.junit.Test;
 
 import java.util.List;

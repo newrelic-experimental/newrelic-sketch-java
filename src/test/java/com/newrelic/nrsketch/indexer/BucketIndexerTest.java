@@ -269,7 +269,7 @@ public class BucketIndexerTest {
                 1); // powerOf2IndexDelta
 
         testScalesSubnormal(LogIndexer::new,
-                1, // fromScale
+                ScaledExpIndexer.MIN_SCALE, // fromScale
                 43, // toScale
                 1, // roundTripIndexDelta
                 0); // powerOf2IndexDelta

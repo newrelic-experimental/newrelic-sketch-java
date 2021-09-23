@@ -11,7 +11,7 @@ package com.newrelic.nrsketch.indexer;
 // because it limits floating point computation in the small range of 1 to 2.
 
 public class LogIndexer extends ScaledExpIndexer {
-    // See also ScaledExpIndexer.getBucketStart() on avoiding using base as intermediate result.
+    // See also ScaledExpIndexer.scaledBasePower() on avoiding using base as intermediate result.
     // index = log(value) / log(base)
     // = log(value) / log(2^(2^-scale))
     // = log(value) / (2^-scale * log(2))

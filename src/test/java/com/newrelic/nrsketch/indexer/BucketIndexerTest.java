@@ -240,37 +240,22 @@ public class BucketIndexerTest {
 
     @Test
     public void testLogIndexerScales() {
-        // Limit to scale 43, because LogIndexer.getBucketStart() calls scaledPower(), which cannot handle
+        // Because LogIndexer.getBucketStart() calls scaledBasePower(), which cannot handle
         // more than 52 significant bits on index, and index needs about 10 bits for input exponent.
-        // This leaves 43 bits to resolve the input mantissa part.
-
-        testScales(LogIndexer::new,
-                1, // fromScale
-                43, // toScale
-                Double.MIN_EXPONENT, // fromExponent
-                Double.MAX_EXPONENT, // toExponent
-                1, // roundTripIndexDelta
-                2); // powerOf2IndexDelta
-
-        testScales(LogIndexer::new,
-                1, // fromScale
-                43, // toScale
-                -500, // fromExponent, higher exponent needs higher powerOf2IndexDelta
-                500, // toExponent
-                1, // roundTripIndexDelta
-                1); // powerOf2IndexDelta
+        // This leaves 42 bits to resolve the input mantissa part.
+        // Index delta of 1 (off by one bucket) is acceptable due to floating point inaccuracy.
+        // Above maxAccurateScale, LogIndexer's index delta will exceed 1.
+        final int maxAccurateScale = 42;
 
         testScales(LogIndexer::new,
                 -10, // fromScale. LogIndexer gives wrong result at scale -11 at Double.MIN end, likely because of float point overflow or underflow.
-                0, // toScale
-                Double.MIN_EXPONENT, // fromExponent
-                Double.MAX_EXPONENT, // toExponent
+                maxAccurateScale, // toScale
                 1, // roundTripIndexDelta
                 1); // powerOf2IndexDelta
 
         testScalesSubnormal(LogIndexer::new,
                 ScaledExpIndexer.MIN_SCALE, // fromScale
-                43, // toScale
+                maxAccurateScale, // toScale
                 1, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
     }
@@ -280,8 +265,6 @@ public class BucketIndexerTest {
         testScales(SubBucketLogIndexer::new,
                 1, // fromScale
                 ScaledExpIndexer.MAX_SCALE, // toScale
-                Double.MIN_EXPONENT, // fromExponent
-                Double.MAX_EXPONENT, // toExponent
                 1, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
 
@@ -297,8 +280,6 @@ public class BucketIndexerTest {
         testScales(SubBucketLookupIndexer::new,
                 1, // fromScale
                 20, // toScale. Scales above 20 would use too much memory
-                Double.MIN_EXPONENT, // fromExponent
-                Double.MAX_EXPONENT, // toExponent
                 0, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
 
@@ -314,8 +295,6 @@ public class BucketIndexerTest {
         testScales(ExponentIndexer::new,
                 ScaledExpIndexer.MIN_SCALE,
                 0, // toScale
-                Double.MIN_EXPONENT, // fromExponent
-                Double.MAX_EXPONENT, // toExponent
                 0, // roundTripIndexDelta
                 0); // powerOf2IndexDelta
 
@@ -329,8 +308,6 @@ public class BucketIndexerTest {
     private void testScales(final Function<Integer, ScaledExpIndexer> indexerMaker,
                             final int fromScale,
                             final int toScale,
-                            final int fromExponent,
-                            final int toExponent,
                             final long roundTripIndexDelta,
                             final long powerOf2IndexDelta
     ) {
@@ -376,7 +353,7 @@ public class BucketIndexerTest {
             }
 
             // Test power of 2
-            for (int exponent = fromExponent; exponent <= toExponent; ++exponent) {
+            for (int exponent = Double.MIN_EXPONENT; exponent <= Double.MAX_EXPONENT; ++exponent) {
                 final double value = Math.scalb(1D, exponent);
                 final long expectedIndex = scale >= 0 ? indexesPerPowerOf2 * exponent : exponent >> (-scale);
 

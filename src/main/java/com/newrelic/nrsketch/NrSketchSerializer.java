@@ -93,7 +93,16 @@ public class NrSketchSerializer {
         buffer.putDouble(sketch.getMax());
 
         buffer.put((byte) (sketch.isBucketHoldsPositiveNumbers() ? 1 : 0));
-        buffer.put((byte) sketch.getScale()); // 1 byte is enough for scale
+
+        final int scale = sketch.getScale();
+        if (scale > Byte.MAX_VALUE || scale < Byte.MIN_VALUE) {
+            // Today scaled exponential indexer scale is limited to [-11, 52], which fits in one byte.
+            // But to treat the indexer as a black box, the Sketch classes shall not assume scale's range.
+            // As a compromise, we do a check here to future-proof serializer logic.
+            throw new RuntimeException("Scale " + scale + " cannot be written with 1 byte");
+        }
+        buffer.put((byte) scale);
+
         buffer.put(getIndexerMakerCode(sketch.getIndexerMaker()));
 
         buffer.putLong(sketch.getCountForNegatives());

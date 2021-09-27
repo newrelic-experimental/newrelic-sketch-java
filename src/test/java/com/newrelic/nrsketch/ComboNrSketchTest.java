@@ -16,6 +16,7 @@ import java.util.function.Function;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.EMPTY_BUCKET_LIST;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.INITIAL_ERROR;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE4_ERROR;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.TEST_INIT_SCALE;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.insertData;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
@@ -91,7 +92,7 @@ public class ComboNrSketchTest {
     // Also tests serialization and relative error
     @Test
     public void positiveFirst() {
-        final ComboNrSketch histogram = new ComboNrSketch(10);
+        final ComboNrSketch histogram = new ComboNrSketch(10, TEST_INIT_SCALE);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
         verifySerialization(histogram, 9);
         assertEquals(0, histogram.getPercentileRelativeError(), 0);
@@ -172,7 +173,7 @@ public class ComboNrSketchTest {
     // Also tests serialization and relative error
     @Test
     public void negativeFirst() {
-        final ComboNrSketch histogram = new ComboNrSketch(10);
+        final ComboNrSketch histogram = new ComboNrSketch(10, TEST_INIT_SCALE);
         verifyHistogram(histogram, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
         verifySerialization(histogram, 9);
         assertEquals(0, histogram.getPercentileRelativeError(), 0);
@@ -294,7 +295,7 @@ public class ComboNrSketchTest {
 
     @Test
     public void testLargeNumbers() {
-        final ComboNrSketch histogram = new ComboNrSketch(320);
+        final ComboNrSketch histogram = new ComboNrSketch(320, TEST_INIT_SCALE);
 
         double value = -1e6;
         histogram.insert(value);

@@ -4,15 +4,16 @@
 
 ## Introduction
 
-New Relic Sketch (aka NrSketch)  is a scaled base2 exponential histogram. It is adapted from the histogram code used at 
-New Relic. It is a
-prototype for Open Telemetry Enhancement Proposal
+New Relic Sketch (aka NrSketch)  is a scaled base2 exponential histogram. It is adapted from the histogram code used at
+[New Relic](https://newrelic.com/). It is a prototype for Open Telemetry Enhancement Proposal
 149 [Add exponential bucketing to histogram protobuf](https://github.com/open-telemetry/oteps/blob/main/text/0149-exponential-histogram.md)
-. It is also an option in the Open Telemetry
-discussion [Referendum on Histogram format](https://github.com/open-telemetry/opentelemetry-specification/issues/1776).
-As a prototype, it is meant to demonstrate ideas. Some functionality may be
-missing. For example, uploading the library to an artifactory repository has not
-been implemented. Work to "productize" the prototype is in progress.
+, with matching "ExponentialHistogram" message
+in [transport protocol](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto)
+, and
+"ExponentialHistogram" data points
+in [data model](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md)
+. As a prototype, it is meant to demonstrate ideas. Some functionality may be missing. For example, uploading the
+library to an artifactory repository has not been implemented. Work to "productize" the prototype is in progress.
 
 A scaled base2 exponential histogram has these properties:
 
@@ -23,23 +24,31 @@ Bucket index is an integer that can be positive (bound > 1), 0 (bound = 1), or n
 point number greater than 1. It is further restricted by scale. Scale is an integer that can be positive (base < 2), 0 (
 base = 2), or negative (base > 2). The following table shows bases at selected scales.
 
-| scale | base      | relative error | dataset contrast at 320 buckets |
-| ----- | --------- | -------------- | --------------------------- |
-| 12    | 1.000169  | 0.008461%      | 1.06                        |
-| 11    | 1.000339  | 0.016923%      | 1.11                        |
-| 10    | 1.000677  | 0.033845%      | 1.24                        |
-| 9     | 1.001355  | 0.067690%      | 1.54                        |
-| 8     | 1.002711  | 0.135380%      | 2.38                        |
-| 7     | 1.005430  | 0.270760%      | 5.66                        |
-| 6     | 1.010889  | 0.541516%      | 32                          |
-| 5     | 1.021897  | 1.083000%      | 1,024      (1K)             |
-| 4     | 1.044274  | 2.165746%      | 1,048,576  (1M)             |
-| 3     | 1.090508  | 4.329462%      | 1.10E+12   (1T)             |
-| 2     | 1.189207  | 8.642723%      | 1.21E+24                    |
-| 1     | 1.414214  | 17.157288%     | 1.46E+48                    |
-| 0     | 2.000000  | 33.333333%     | 2.14E+96                    |
-| \-1   | 4.000000  | 60.000000%     | 4.56E+192                   |
-| \-2   | 16.000000 | 88.235294%     | 2.08E+385                   |
+| scale | base          | relative error | dataset contrast at 320 buckets |
+| ----- | ------------- | -------------- | ------------------------------- |
+| 20    | 1.000 000 661 | 0.000 033%     | 1.000 212                       |
+| 19    | 1.000 001 322 | 0.000 066%     | 1.000 423                       |
+| 18    | 1.000 002 644 | 0.000 132%     | 1.000 846                       |
+| 17    | 1.000 005 288 | 0.000 264%     | 1.001 694                       |
+| 16    | 1.000 011     | 0.000 529%     | 1.003 390                       |
+| 15    | 1.000 021     | 0.001 058%     | 1.006 792                       |
+| 14    | 1.000 042     | 0.002 115%     | 1.013 630                       |
+| 13    | 1.000 085     | 0.004 231%     | 1.027 446                       |
+| 12    | 1.000 169     | 0.008 461%     | 1.056                           |
+| 11    | 1.000 339     | 0.017%         | 1.114                           |
+| 10    | 1.000 677     | 0.034%         | 1.242                           |
+| 9     | 1.001 355     | 0.068%         | 1.542                           |
+| 8     | 1.002 711     | 0.135%         | 2.378                           |
+| 7     | 1.005 430     | 0.271%         | 5.657                           |
+| 6     | 1.010 889     | 0.542%         | 32                              |
+| 5     | 1.021 897     | 1.083%         | 1,024      (1K)                     |
+| 4     | 1.044 274     | 2.166%         | 1,048,576  (1M)                     |
+| 3     | 1.090 508     | 4.329%         | 1.10E+12   (1T)                     |
+| 2     | 1.189 207     | 8.643%         | 1.21E+24                        |
+| 1     | 1.414 214     | 17.157%        | 1.46E+48                        |
+| 0     | 2.000 000     | 33.333%        | 2.14E+96                        |
+| -1   | 4.000 000     | 60.000%        | 4.56E+192                       |
+| -2   | 16.000 000    | 88.235%        | 2.08E+385                       |
 
 "Relative error" here is the relative error of percentile or quantile calculated from the histogram. Relative error is
 defined as "Math.abs(reportedValue - actualValue) / reportedValue". To minimize error, percentile calculation returns
@@ -72,19 +81,25 @@ features:
 * Full "double" range, including subnormal numbers are supported, at all meaningful scales (-11 to 52, inclusive).
 
 With a reasonable default number of buckets of 320, a histogram can fit a dataset with contrast (maxValue / minValue) up
-to 1M at scale 4, for a 2.17% relative error. Here contrast = 2 ^ (numBuckets / 2^scale). When contrast is smaller, the
-histogram will reach even higher scales. The histogram defaults to an initial scale of 12, with 0.0085% relative error.
-This is the highest resolution in default config, because a histogram can only downscale from its initial scale. These
-defaults meet most telemetry use cases. This effectively achieves zero configuration.
+to 1M at scale 4, for a 2.17% relative error. Here contrast = 2 ^ (numBuckets / 2^scale). The memory cost of 320 buckets
+is modest. Because NrSketch uses variable size counters, and most use cases need no more than 4 bytes per bucket count,
+the in memory footprint of an NrSketch is typically less than 320 * 4 = 1280 bytes. The included serializer
+uses [varint](https://en.wikipedia.org/wiki/Variable-length_quantity) to encode the counters, which is even more space
+efficient. Serialized size is often just a few hundred bytes. At this level of cost, many use cases will not need to
+override the default max number of buckets. The default no argument constructor will often just work.
+
+NrSketch defaults to an initial scale of 20. At this scale and below, bucket index can fit into a signed 32 bit integer.
+This makes the generated histogram compatible with systems where index is limited to 32 bit, even though nrSketch itself
+can go all the way to scale 52 and 64 bit index. The relatively high initial scale makes sure that the default config
+works from very low contrast to very high contrast dataset. Typically within the first a few values in the dataset,
+nrSketch can quickly downscale to fit the dataset. Because nrSketch can downscale multiple scales at once, the cost to
+fit high contrast is small. For example, if the first value is 1, the second value is 5, nrSketch can downscale directly
+from the initial scale of 20 to scale 7, where the max dataset contrast is 5.6 at the default 320 buckets. In most
+cases, you will not need to override the default initial scale.
 
 Note that contrast is ratio of maxValue / minNonZeroValue in a dataset. It is not the absolute value of max value. For
 example, the datasets of [1, 1M] and [10, 10M] both have a contrast of 1M. The value of 0 does not fall into any of the
 indexed buckets. It has its own special counter.
-
-The memory cost of 320 buckets is modest. Because NrSketch uses variable size counters, and most use cases need no more
-than 4 bytes per bucket count, the in memory footprint of an NrSketch is typically less than 320 * 4 = 1280 bytes.
-Various methods can be used to further compress the the size when serializing the counters to disk or network.
-Serialized form often takes only a few hundred bytes per histogram.
 
 ## NrSketch API
 
@@ -110,9 +125,9 @@ NrSketch provides the following interfaces and classes:
   synchronized" for all methods of the interface. It can be used on top of SimpleNrSketch or ComboNrSketch. It does add
   some cpu overhead. Exact amount depends on the particular platform.
 
-* **NrSketchSerializer**: This class serializes a sketch to a ByteBuffer, or deserializes a sketch from a ByteBuffer. 
-  The bucket counters are written as [varint](https://en.wikipedia.org/wiki/Variable-length_quantity) to save space. At 
-the default max 320 buckets, typical serialized object size is less than 1KB.
+* **NrSketchSerializer**: This class serializes a sketch to a ByteBuffer, or deserializes a sketch from a ByteBuffer.
+  The bucket counters are written as [varint](https://en.wikipedia.org/wiki/Variable-length_quantity) to save space. At
+  the default max 320 buckets, typical serialized object size is less than 1KB.
 
 For your convenience, Jmh benchmark is included in this project to measure cpu cost (see jmhInsert.sh). To give you some
 rough idea on the relative cpu cost of the different classes, below are some numbers. As always, benchmark numbers
@@ -179,19 +194,23 @@ For benchmarking, see jmhIndexer.sh, jmhInserrt.sh and src/jmh.
 
 ## Support
 
-NrSketch is experimental right now. No support yet. 
+NrSketch is experimental right now. No support yet.
 
 ## Contributing
 
-We encourage your contributions to improve NrSketch. Keep in mind when you submit your pull request, you'll need to 
-sign the CLA via the click-through using CLA-Assistant. You only have to sign the CLA one time per project.
-If you have any questions, or to execute our corporate CLA, required if your contribution is on behalf of a company,  please drop us an email at opensource@newrelic.com.
+We encourage your contributions to improve NrSketch. Keep in mind when you submit your pull request, you'll need to sign
+the CLA via the click-through using CLA-Assistant. You only have to sign the CLA one time per project. If you have any
+questions, or to execute our corporate CLA, required if your contribution is on behalf of a company, please drop us an
+email at opensource@newrelic.com.
 
 **A note about vulnerabilities**
 
-As noted in our [security policy](../../security/policy), New Relic is committed to the privacy and security of our customers and their data. We believe that providing coordinated disclosure by security researchers and engaging with the security community are important means to achieve our security goals.
+As noted in our [security policy](../../security/policy), New Relic is committed to the privacy and security of our
+customers and their data. We believe that providing coordinated disclosure by security researchers and engaging with the
+security community are important means to achieve our security goals.
 
-If you believe you have found a security vulnerability in this project or any of New Relic's products or websites, we welcome and greatly appreciate you reporting it to New Relic through [HackerOne](https://hackerone.com/newrelic).
+If you believe you have found a security vulnerability in this project or any of New Relic's products or websites, we
+welcome and greatly appreciate you reporting it to New Relic through [HackerOne](https://hackerone.com/newrelic).
 
 ## License
 

@@ -249,7 +249,9 @@ public class NrSketchSerializer {
 
     public static void serializeConcurrentNrSketch(final ConcurrentNrSketch sketch, final ByteBuffer buffer) {
         buffer.putShort(CONCURRENT_NRSKETCH_VERSION);
-        serializeNrSketch(sketch.getSketch(), buffer);
+        synchronized (sketch) {
+            serializeNrSketch(sketch.getSketch(), buffer);
+        }
     }
 
     public static int getConcurrentNrSketchSerializeBufferSize(final ConcurrentNrSketch sketch) {

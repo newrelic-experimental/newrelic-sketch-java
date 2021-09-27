@@ -7,7 +7,6 @@ package com.newrelic.nrsketch;
 import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.DoubleFormat;
 import com.newrelic.nrsketch.indexer.IndexerOption;
-import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import org.junit.Test;
 
@@ -92,51 +91,59 @@ public class SimpleNrSketchTest {
         verifySerialization(histogram, 555);
     }
 
-    // Test that ">>" can produce a new index during downscaling.
     @Test
     public void testDownscaling() {
-        final double delta = 1e-12;
-        for (int scale = 12; scale >= -3; scale--) {
-            for (int scaleDelta = 1; scaleDelta <= 5; scaleDelta++) {
-                final ScaledExpIndexer indexer1 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale);
-                final ScaledExpIndexer indexer2 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
+        final SimpleNrSketch h1 = testHistogram(20, 1, 10, 100, new Bucket[]{
+                new Bucket(1.0, 1.189207115002721, 3), // bucket 1
+                new Bucket(1.189207115002721, 1.4142135623730951, 2), // bucket 2
+                new Bucket(1.4142135623730951, 1.681792830507429, 3), // bucket 3
+                new Bucket(1.681792830507429, 2.0, 4), // bucket 4
+                new Bucket(2.0, 2.378414230005442, 4), // bucket 5
+                new Bucket(2.378414230005442, 2.8284271247461903, 5), // bucket 6
+                new Bucket(2.8284271247461903, 3.363585661014858, 6), // bucket 7
+                new Bucket(3.363585661014858, 4.0, 7), // bucket 8
+                new Bucket(4.0, 4.756828460010884, 8), // bucket 9
+                new Bucket(4.756828460010884, 5.656854249492381, 10), // bucket 10
+                new Bucket(5.656854249492381, 6.727171322029716, 12), // bucket 11
+                new Bucket(6.727171322029716, 8.0, 14), // bucket 12
+                new Bucket(8.0, 9.513656920021768, 17), // bucket 13
+                new Bucket(9.513656920021768, 9.91, 5), // bucket 14
+        });
+        assertEquals(2, h1.getScale());
 
-                final double base1 = indexer1.getBase();
-                final double base2 = indexer2.getBase();
+        h1.downScaleTo(4);
+        assertEquals(2, h1.getScale()); // No change
 
-                assertDoubleEquals(base2, Math.pow(base1, 1 << scaleDelta), DELTA);
+        h1.downScaleTo(2);
+        assertEquals(2, h1.getScale()); // No change
 
-                for (long idx1 = indexer1.getMinIndexNormal(); idx1 <= indexer1.getMaxIndex(); idx1 += 3) {
-                    final long idx2 = idx1 >> scaleDelta;
+        h1.downScaleTo(1);
+        assertEquals(1, h1.getScale());
 
-                    final double bucket1Start = indexer1.getBucketStart(idx1);
-                    final double bucket1End = indexer1.getBucketEnd(idx1);
+        verifyHistogram(h1, 100, 1, 9.91, new Bucket[]{
+                new Bucket(1.0, 1.4142135623730951, 5), // bucket 1
+                new Bucket(1.4142135623730951, 2.0, 7), // bucket 2
+                new Bucket(2.0, 2.8284271247461903, 9), // bucket 3
+                new Bucket(2.8284271247461903, 4.0, 13), // bucket 4
+                new Bucket(4.0, 5.656854249492381, 18), // bucket 5
+                new Bucket(5.656854249492381, 8.0, 26), // bucket 6
+                new Bucket(8.0, 9.91, 22), // bucket 7
+        });
 
-                    final double bucket2Start = indexer2.getBucketStart(idx2);
-                    final double bucket2End = indexer2.getBucketEnd(idx2);
+        h1.downScaleTo(-1);
+        assertEquals(-1, h1.getScale());
 
-                    if (bucket1Start > Double.MIN_NORMAL) {
-                        assertDoubleEquals(base1, bucket1End / bucket1Start, delta);
-                    }
-                    if (bucket2Start > Double.MIN_NORMAL) {
-                        assertDoubleEquals(base2, bucket2End / bucket2Start, delta);
-                    }
+        verifyHistogram(h1, 100, 1, 9.91, new Bucket[]{
+                new Bucket(1.0, 4.0, 34), // bucket 1
+                new Bucket(4.0, 9.91, 66), // bucket 2
+        });
 
-                    assertDoubleGreater(bucket1Start, bucket2Start, delta);
-                    assertDoubleGreater(bucket2End, bucket1Start, delta);
+        h1.downScaleTo(-4);
+        assertEquals(-4, h1.getScale());
 
-                    assertDoubleGreater(bucket1End, bucket2Start, delta);
-                    assertDoubleGreater(bucket2End, bucket1End, delta);
-                }
-            }
-        }
-    }
-
-    // Asserts a >= b. Delta is relative
-    public static void assertDoubleGreater(final double a, final double b, final double delta) {
-        if (a + Math.abs(a * delta) < b) {
-            fail("a=" + a + " b=" + b + " delta=" + delta);
-        }
+        verifyHistogram(h1, 100, 1, 9.91, new Bucket[]{
+                new Bucket(1.0, 9.91, 100), // bucket 1
+        });
     }
 
     private static void verifyRelativeError(final SimpleNrSketch histogram, final int expectedscale, final double expectedRelativeError) {

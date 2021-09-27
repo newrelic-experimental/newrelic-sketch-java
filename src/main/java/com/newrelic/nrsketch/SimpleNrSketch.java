@@ -5,6 +5,7 @@
 package com.newrelic.nrsketch;
 
 import com.newrelic.nrsketch.indexer.IndexerOption;
+import com.newrelic.nrsketch.indexer.ScaledExpIndexer;
 import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
@@ -253,6 +254,17 @@ public class SimpleNrSketch implements NrSketch {
             buckets = newBuckets;
         }
         indexer = indexerMaker.apply(getScale() - scaleReduction);
+    }
+
+    // Downscale to targetScale or lower scale
+    public void downScaleTo(final int targetScale) {
+        if (targetScale > ScaledExpIndexer.MAX_SCALE || targetScale < ScaledExpIndexer.MIN_SCALE) {
+            throw new IllegalArgumentException("targetScale " + targetScale + " out of range of " + ScaledExpIndexer.MIN_SCALE + " and " + ScaledExpIndexer.MAX_SCALE);
+        }
+        if (getScale() <= targetScale) {
+            return;
+        }
+        downScale(getScale() - targetScale);
     }
 
     @Override

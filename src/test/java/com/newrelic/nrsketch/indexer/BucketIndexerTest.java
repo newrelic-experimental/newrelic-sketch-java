@@ -63,6 +63,12 @@ public class BucketIndexerTest {
     public void testMinMaxScale() {
         assertEquals(-11, ScaledExpIndexer.MIN_SCALE);
         assertEquals(52, ScaledExpIndexer.MAX_SCALE);
+
+        assertTrue(ScaledExpIndexer.getMaxIndex(ScaledExpIndexer.MAX_SINT32_INDEX_SCALE) <= Integer.MAX_VALUE
+                && ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MAX_SINT32_INDEX_SCALE) >= Integer.MIN_VALUE);
+
+        assertTrue(ScaledExpIndexer.getMaxIndex(ScaledExpIndexer.MAX_SINT32_INDEX_SCALE + 1) > Integer.MAX_VALUE
+                || ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MAX_SINT32_INDEX_SCALE + 1) < Integer.MIN_VALUE);
     }
 
     @Test
@@ -88,6 +94,52 @@ public class BucketIndexerTest {
 
         assertEquals(-1, ScaledExpIndexer.getMinIndexNormal(ScaledExpIndexer.MIN_SCALE));
         assertEquals(-1, ScaledExpIndexer.getMinIndex(ScaledExpIndexer.MIN_SCALE));
+    }
+
+    // Test that ">>" can produce a new index during downscaling.
+    @Test
+    public void testDownscaling() {
+        for (int scale = 12; scale >= -3; scale--) {
+            for (int scaleDelta = 1; scaleDelta <= 5; scaleDelta++) {
+                final ScaledExpIndexer indexer1 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale);
+                final ScaledExpIndexer indexer2 = (ScaledExpIndexer) IndexerOption.AUTO_SELECT.getIndexer(scale - scaleDelta);
+
+                final double base1 = indexer1.getBase();
+                final double base2 = indexer2.getBase();
+
+                assertDoubleEquals(base2, Math.pow(base1, 1 << scaleDelta), DELTA);
+
+                for (long idx1 = indexer1.getMinIndex(); idx1 <= indexer1.getMaxIndex(); idx1 += 3) {
+                    final long idx2 = idx1 >> scaleDelta;
+
+                    final double bucket1Start = indexer1.getBucketStart(idx1);
+                    final double bucket1End = indexer1.getBucketEnd(idx1);
+
+                    final double bucket2Start = indexer2.getBucketStart(idx2);
+                    final double bucket2End = indexer2.getBucketEnd(idx2);
+
+                    if (bucket1Start > Double.MIN_NORMAL) {
+                        assertDoubleEquals(base1, bucket1End / bucket1Start, DELTA);
+                    }
+                    if (bucket2Start > Double.MIN_NORMAL) {
+                        assertDoubleEquals(base2, bucket2End / bucket2Start, DELTA);
+                    }
+
+                    assertDoubleGreater(bucket1Start, bucket2Start, DELTA);
+                    assertDoubleGreater(bucket2End, bucket1Start, DELTA);
+
+                    assertDoubleGreater(bucket1End, bucket2Start, DELTA);
+                    assertDoubleGreater(bucket2End, bucket1End, DELTA);
+                }
+            }
+        }
+    }
+
+    // Asserts a >= b. Delta is relative
+    public static void assertDoubleGreater(final double a, final double b, final double delta) {
+        if (a + Math.abs(a * delta) < b) {
+            fail("a=" + a + " b=" + b + " delta=" + delta);
+        }
     }
 
     @Test

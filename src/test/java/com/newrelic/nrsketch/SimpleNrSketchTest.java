@@ -29,6 +29,10 @@ public class SimpleNrSketchTest {
 
     @Test
     public void testConstructors() {
+        assertEquals(320, SimpleNrSketch.DEFAULT_MAX_BUCKETS);
+        assertEquals(20, SimpleNrSketch.DEFAULT_INIT_SCALE);
+        assertEquals(IndexerOption.AUTO_SELECT, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+
         SimpleNrSketch sketch = new SimpleNrSketch();
         assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 

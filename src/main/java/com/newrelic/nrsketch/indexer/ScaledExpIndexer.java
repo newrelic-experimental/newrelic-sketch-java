@@ -19,6 +19,9 @@ public abstract class ScaledExpIndexer implements ScaledIndexer {
     // Bucket -1 for values < 1
     public static final int MIN_SCALE = -DoubleFormat.EXPONENT_BITS;
 
+    // Max scale where index will fit in a signed 32 bit integer.
+    public static final int MAX_SINT32_INDEX_SCALE = 20;
+
     protected int scale;
 
     public ScaledExpIndexer(final int scale) {

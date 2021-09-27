@@ -22,7 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SimpleNrSketchTest {
-    public static final int TEST_INIT_SCALE = 12;
+    public static final int TEST_INIT_SCALE = 12; // Initial scale for test cases.
     public static final double DELTA = 1e-14; // Floating point comparison relative delta.
     public static final double ERROR_DELTA = 1.001; // for relative error comparison.
     public static final double SCALE4_ERROR = 0.02165746232622625;
@@ -172,7 +172,7 @@ public class SimpleNrSketchTest {
 
     @Test
     public void testRelativeErrorAndSerialization() {
-        final SimpleNrSketch histogram = new SimpleNrSketch(10);
+        final SimpleNrSketch histogram = new SimpleNrSketch(10, TEST_INIT_SCALE);
 
         verifyRelativeError(histogram, 12, INITIAL_ERROR);
         verifySerialization(histogram, 75);
@@ -627,7 +627,7 @@ public class SimpleNrSketchTest {
 
     @Test
     public void testSingleEntryHistogram() {
-        final SimpleNrSketch h1 = new SimpleNrSketch(10);
+        final SimpleNrSketch h1 = new SimpleNrSketch(10, TEST_INIT_SCALE);
         h1.insert(-10);
         verifyHistogram(h1, 1, -10, -10, new Bucket[]{
                 new Bucket(-10.000000, -10, 1), // bucket 1
@@ -792,7 +792,7 @@ public class SimpleNrSketchTest {
 
     @Test
     public void testNegatives() {
-        final SimpleNrSketch h1 = new SimpleNrSketch(10);
+        final SimpleNrSketch h1 = new SimpleNrSketch(10, TEST_INIT_SCALE);
         h1.insert(-10);
         verifyHistogram(h1, 1, -10, -10, new Bucket[]{
                 new Bucket(-10.000000, -10.000000, 1), // bucket 1

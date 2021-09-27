@@ -21,7 +21,7 @@ import java.util.function.Function;
 
 public class SimpleNrSketch implements NrSketch {
     public static final int DEFAULT_MAX_BUCKETS = 320; // 2.17% relative error (scale 4) for max/min contrast up to 1M
-    public static final int DEFAULT_INIT_SCALE = 12; // .0085% relative error
+    public static final int DEFAULT_INIT_SCALE = ScaledExpIndexer.MAX_SINT32_INDEX_SCALE; // 0.000033% relative error
 
     public static final Function<Integer, ScaledIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT;
 

@@ -7,10 +7,11 @@
 New Relic Sketch (aka NrSketch)  is a scaled base2 exponential histogram. It is adapted from the histogram code used at
 [New Relic](https://newrelic.com/). It is a prototype for Open Telemetry Enhancement Proposal
 149 [Add exponential bucketing to histogram protobuf](https://github.com/open-telemetry/oteps/blob/main/text/0149-exponential-histogram.md)
-. Relevant transport protocol is
-the [ExponentialHistogram message](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto)
-. The data model is
-the [ExponentialHistogram data points](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md)
+, with matching "ExponentialHistogram" message
+in [transport protocol](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto)
+, and
+"ExponentialHistogram" data points
+in [data model](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md)
 . As a prototype, it is meant to demonstrate ideas. Some functionality may be missing. For example, uploading the
 library to an artifactory repository has not been implemented. Work to "productize" the prototype is in progress.
 

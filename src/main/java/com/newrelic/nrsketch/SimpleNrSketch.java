@@ -282,12 +282,12 @@ public class SimpleNrSketch implements NrSketch {
         if (a.bucketHoldsPositiveNumbers != b.bucketHoldsPositiveNumbers) {
             throw new IllegalArgumentException("SimpleNrSketch merge not allowed when bucketHoldsPositiveNumbers are different");
         }
-        final int commonScale = Math.min(a.getScale(), b.getScale());
-        int deltaA = a.getScale() - commonScale;
-        int deltaB = b.getScale() - commonScale;
-
-        // Find out newStart and newEnd of combined window
         if (!b.buckets.isEmpty()) {
+            final int commonScale = Math.min(a.getScale(), b.getScale());
+            int deltaA = a.getScale() - commonScale;
+            int deltaB = b.getScale() - commonScale;
+
+            // Find out newStart and newEnd of combined window
             final long newStartB = b.buckets.getIndexStart() >> deltaB;
             final long newEndB = b.buckets.getIndexEnd() >> deltaB;
             final long newStart;
@@ -302,14 +302,12 @@ public class SimpleNrSketch implements NrSketch {
             }
             // Combined window may not fit at commonScale. Add additional reduction if needed.
             deltaA += a.getScaleReduction(newStart, newEnd);
-        }
 
-        a.downScale(deltaA); // Apply final "a" reduction
+            a.downScale(deltaA); // Apply final "a" reduction
 
-        deltaB = b.getScale() - a.getScale(); // Finalize "b" reduction
+            deltaB = b.getScale() - a.getScale(); // Finalize "b" reduction
 
-        // Now merge b buckets into a.
-        if (!b.buckets.isEmpty()) {
+            // Now merge b buckets into a.
             for (long indexB = b.buckets.getIndexStart(); indexB <= b.buckets.getIndexEnd(); indexB++) {
                 if (!a.buckets.increment(indexB >> deltaB, b.buckets.get(indexB))) {
                     throw new RuntimeException("merge(): failed to increment bucket");

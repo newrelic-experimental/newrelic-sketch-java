@@ -163,8 +163,14 @@ public class ComboNrSketch implements NrSketch {
     }
 
     @Override
-    public int hashCode() { // Defined just to keep findbugs happy.
-        throw new UnsupportedOperationException();
+    public int hashCode() {
+        int result = 1;
+        result = 31 * result + Integer.hashCode(maxNumBucketsPerHistogram);
+        result = 31 * result + Integer.hashCode(initialScale);
+        for (NrSketch sketch : histograms) {
+            result = 31 * result + sketch.hashCode();
+        }
+        return result;
     }
 
     @Override

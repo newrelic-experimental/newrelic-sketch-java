@@ -20,6 +20,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 @RunWith(Parameterized.class)
 public class ConcurrentNrSketchTest {
@@ -37,6 +38,35 @@ public class ConcurrentNrSketchTest {
 
     @Parameterized.Parameter()
     public SketchMaker sketchMaker;
+
+    // Equality is also tested in verifySerialization()
+    @Test
+    public void testEqualAndHash() {
+        final ConcurrentNrSketch s1 = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
+        final ConcurrentNrSketch s2 = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
+        final ConcurrentNrSketch s3 = new ConcurrentNrSketch(sketchMaker.getSketch(99));
+
+        assertNotEquals(s1, s3);
+
+        assertEquals(s1, s2);
+        assertEquals(s1.hashCode(), s2.hashCode());
+
+        s1.insert(11);
+        assertNotEquals(s1, s2);
+        assertNotEquals(s1.hashCode(), s2.hashCode());
+
+        s2.insert(11);
+        assertEquals(s1, s2);
+        assertEquals(s1.hashCode(), s2.hashCode());
+
+        s1.insert(-22);
+        assertNotEquals(s1, s2);
+        assertNotEquals(s1.hashCode(), s2.hashCode());
+
+        s2.insert(-22);
+        assertEquals(s1, s2);
+        assertEquals(s1.hashCode(), s2.hashCode());
+    }
 
     @Test
     public void happyPath() throws Exception {

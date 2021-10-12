@@ -7,6 +7,7 @@ package com.newrelic.nrsketch;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class MultiTypeCounterArrayTest {
     @Test
@@ -117,5 +118,26 @@ public class MultiTypeCounterArrayTest {
         for (int i = 0; i < expectedArray.length; i++) {
             assertEquals(expectedArray[i], array.get(i));
         }
+    }
+
+    @Test
+    public void testEqualAndHash() {
+        final MultiTypeCounterArray a1 = new MultiTypeCounterArray(5);
+        final MultiTypeCounterArray a2 = new MultiTypeCounterArray(5);
+        final MultiTypeCounterArray a3 = new MultiTypeCounterArray(6);
+
+        assertNotEquals(a1, a3);
+
+        assertEquals(a1, a2);
+        assertEquals(28629151, a1.hashCode());
+        assertEquals(28629151, a2.hashCode());
+
+        a1.increment(3, 1);
+        assertNotEquals(a1, a2);
+        assertEquals(28629182, a1.hashCode());
+
+        a2.increment(3, 1);
+        assertEquals(a1, a2);
+        assertEquals(28629182, a2.hashCode());
     }
 }

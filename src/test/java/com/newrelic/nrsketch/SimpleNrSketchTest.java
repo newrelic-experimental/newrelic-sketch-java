@@ -18,6 +18,7 @@ import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertDoubleEquals;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertLongEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -65,6 +66,28 @@ public class SimpleNrSketchTest {
         assertEquals(expectedInitScale, sketch.getScale());
         assertEquals(expectedBucketHoldsPositiveNumbers, sketch.isBucketHoldsPositiveNumbers());
         assertEquals(expectedIndexerMaker, sketch.getIndexerMaker());
+    }
+    
+    // Equality is also tested in verifySerialization() 
+    @Test
+    public void testEqualAndHash() {
+        final SimpleNrSketch s1 = new SimpleNrSketch();
+        final SimpleNrSketch s2 = new SimpleNrSketch();
+        final SimpleNrSketch s3 = new SimpleNrSketch(99);
+
+        assertNotEquals(s1, s3);
+
+        assertEquals(s1, s2);
+        assertEquals(-1726303367, s1.hashCode());
+        assertEquals(-1726303367, s2.hashCode());
+
+        s1.insert(11);
+        assertNotEquals(s1, s2);
+        assertEquals(-3170147, s1.hashCode());
+
+        s2.insert(11);
+        assertEquals(s1, s2);
+        assertEquals(-3170147, s2.hashCode());
     }
 
     // Verify relative error for max/min contrast of 1M, with default number of buckets.

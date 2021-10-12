@@ -22,6 +22,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ComboNrSketchTest {
@@ -66,6 +67,36 @@ public class ComboNrSketchTest {
             assertEquals(expectedInitScale, simpleNrSketch.getScale());
             assertEquals(expectedIndexerMaker, simpleNrSketch.getIndexerMaker());
         }
+    }
+
+    // Equality is also tested in verifySerialization()
+    @Test
+    public void testEqualAndHash() {
+        final ComboNrSketch s1 = new ComboNrSketch();
+        final ComboNrSketch s2 = new ComboNrSketch();
+        final ComboNrSketch s3 = new ComboNrSketch(99);
+
+        assertNotEquals(s1, s3);
+
+        assertEquals(s1, s2);
+        assertEquals(10901, s1.hashCode());
+        assertEquals(10901, s2.hashCode());
+
+        s1.insert(11);
+        assertNotEquals(s1, s2);
+        assertEquals(-2832216, s1.hashCode());
+
+        s2.insert(11);
+        assertEquals(s1, s2);
+        assertEquals(-2832216, s2.hashCode());
+
+        s1.insert(-22);
+        assertNotEquals(s1, s2);
+        assertEquals(2028041486, s1.hashCode());
+
+        s2.insert(-22);
+        assertEquals(s1, s2);
+        assertEquals(2028041486, s2.hashCode());
     }
 
     @Test

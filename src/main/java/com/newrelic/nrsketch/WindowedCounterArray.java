@@ -28,6 +28,16 @@ public class WindowedCounterArray {
         indexEnd = NULL_INDEX;
     }
 
+    public WindowedCounterArray deepCopy() {
+        final WindowedCounterArray result = new WindowedCounterArray(this.maxSize, this.getBytesPerCounter());
+        if (indexStart != NULL_INDEX) {
+            for (long index = indexStart; index <= indexEnd; index++) {
+               result.increment(index, get(index));
+            }
+        }
+        return result;
+    }
+
     @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof WindowedCounterArray)) {
@@ -64,6 +74,8 @@ public class WindowedCounterArray {
         }
         return result;
     }
+
+
 
     @Override
     public String toString() {

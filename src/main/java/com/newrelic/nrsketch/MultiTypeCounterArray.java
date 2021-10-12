@@ -116,6 +116,14 @@ public class MultiTypeCounterArray {
         }
     }
 
+    public MultiTypeCounterArray deepCopy() {
+        final MultiTypeCounterArray result = new MultiTypeCounterArray(getMaxSize(), this.getBytesPerCounter());
+        for (int i = 0; i < getMaxSize(); i++) {
+            result.increment(i, get(i));
+        }
+        return result;
+    }
+
     @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof MultiTypeCounterArray)) {

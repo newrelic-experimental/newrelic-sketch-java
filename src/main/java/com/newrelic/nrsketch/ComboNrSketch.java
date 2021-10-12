@@ -169,7 +169,6 @@ public class ComboNrSketch implements NrSketch {
         result = 31 * result + Integer.hashCode(initialScale);
         for (NrSketch sketch : histograms) {
             result = 31 * result + sketch.hashCode();
-
         }
         return result;
     }

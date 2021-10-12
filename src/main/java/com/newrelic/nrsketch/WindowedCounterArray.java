@@ -51,8 +51,18 @@ public class WindowedCounterArray {
     }
 
     @Override
-    public int hashCode() { // Defined just to keep findbugs happy.
-        throw new UnsupportedOperationException();
+    public int hashCode() {
+        int result = 1;
+        result = 31 * result + Integer.hashCode(maxSize);
+        result = 31 * result + Long.hashCode(indexStart);
+        result = 31 * result + Long.hashCode(indexEnd);
+
+        if (indexStart != NULL_INDEX) {
+            for (long index = indexStart; index <= indexEnd; index++) {
+                result = 31 * result + Long.hashCode(get(index));
+            }
+        }
+        return result;
     }
 
     @Override

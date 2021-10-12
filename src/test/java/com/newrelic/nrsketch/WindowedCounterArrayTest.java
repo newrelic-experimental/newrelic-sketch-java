@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class WindowedCounterArrayTest {
@@ -143,5 +144,26 @@ public class WindowedCounterArrayTest {
         buffer.flip();
         assertEquals(expectedSize, buffer.limit());
         assertEquals(value, WindowedCounterArraySerializer.readVarint64(buffer));
+    }
+
+    @Test
+    public void testEqualAndHash() {
+        final WindowedCounterArray a1 = new WindowedCounterArray(5);
+        final WindowedCounterArray a2 = new WindowedCounterArray(5);
+        final WindowedCounterArray a3 = new WindowedCounterArray(6);
+
+        assertNotEquals(a1, a3);
+
+        assertEquals(a1, a2);
+        assertEquals(34596, a1.hashCode());
+        assertEquals(34596, a2.hashCode());
+
+        a1.increment(3, 1);
+        assertNotEquals(a1, a2);
+        assertEquals(1075453, a1.hashCode());
+
+        a2.increment(3, 1);
+        assertEquals(a1, a2);
+        assertEquals(1075453, a2.hashCode());
     }
 }

@@ -116,6 +116,32 @@ public class MultiTypeCounterArray {
         }
     }
 
+    @Override
+    public boolean equals(final Object obj) {
+        if (!(obj instanceof MultiTypeCounterArray)) {
+            return false;
+        }
+        final MultiTypeCounterArray other = (MultiTypeCounterArray) obj;
+        if (getMaxSize() != other.getMaxSize()) {
+            return false;
+        }
+        for (int i = 0; i < getMaxSize(); i++) {
+            if (get(i) != other.get(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 1;
+        for (int i = 0; i < getMaxSize(); i++) {
+            result = 31 * result + Long.hashCode(get(i));
+        }
+        return result;
+    }
+
     private void convertByteToShort() {
         shortArray = new short[byteArray.length];
         for (int i = 0; i < byteArray.length; i++) {

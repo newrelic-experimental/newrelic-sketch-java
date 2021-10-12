@@ -110,6 +110,21 @@ public class SimpleNrSketch implements NrSketch {
                 && buckets.equals(other.buckets);
     }
 
+    @Override
+    public int hashCode() {
+        int result = 1;
+        result = 31 * result + Long.hashCode(totalCount);
+        result = 31 * result + Double.hashCode(sum);
+        result = 31 * result + Double.hashCode(min);
+        result = 31 * result + Double.hashCode(max);
+        result = 31 * result + Boolean.hashCode(bucketHoldsPositiveNumbers);
+        result = 31 * result + Integer.hashCode(getScale()); // Skipping indexMaker, which could be a lambda
+        result = 31 * result + Long.hashCode(countForNegatives);
+        result = 31 * result + Long.hashCode(countForZero);
+        result = 31 * result + buckets.hashCode();
+        return  result;
+    }
+
     public int getScale() {
         return indexer.getScale();
     }
@@ -120,11 +135,6 @@ public class SimpleNrSketch implements NrSketch {
 
     public static boolean equalsWithNaN(final double a, final double b) {
         return a == b || Double.isNaN(a) && Double.isNaN(b); // Need this function because NaN does not equal anything.
-    }
-
-    @Override
-    public int hashCode() { // Defined just to keep spotbugs happy.
-        throw new UnsupportedOperationException();
     }
 
     @Override

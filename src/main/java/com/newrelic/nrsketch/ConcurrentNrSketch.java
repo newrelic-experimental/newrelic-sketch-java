@@ -43,8 +43,8 @@ public class ConcurrentNrSketch implements NrSketch {
     }
 
     @Override
-    public int hashCode() { // Defined just to keep spotbugs happy.
-        throw new UnsupportedOperationException();
+    public int hashCode() {
+        return sketch.hashCode(); // Hash code collision between "this" and "this.sketch" is acceptable.
     }
 
     @Override

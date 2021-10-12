@@ -51,9 +51,9 @@ public class ComboNrSketchTest {
     }
 
     private void assertParams(final ComboNrSketch sketch,
-                             final int expectedNumBucketsPerHistogram,
-                             final int expectedInitScale,
-                             final Function<Integer, ScaledIndexer> expectedIndexerMaker) {
+                              final int expectedNumBucketsPerHistogram,
+                              final int expectedInitScale,
+                              final Function<Integer, ScaledIndexer> expectedIndexerMaker) {
         sketch.insert(10);
         sketch.insert(-20);
 
@@ -643,6 +643,130 @@ public class ComboNrSketchTest {
                 new Bucket(32.000000, 64.000000, 32), // bucket 13
                 new Bucket(64.000000, 128.000000, 64), // bucket 14
                 new Bucket(128.000000, 149.000000, 22), // bucket 15
+        });
+    }
+
+    @Test
+    public void testSubtractionAndDeepCopy() {
+        final ComboNrSketch h1 = new ComboNrSketch(10);
+        final ComboNrSketch h2 = new ComboNrSketch(10);
+
+        assertEquals(h1, h1.deepCopy());
+
+        h1.subtract(h2);
+        verifyHistogram(h1, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
+
+        insertData(h1, 0, 200, 200);
+        verifyHistogram(h1, 200, 0, 199, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 128.0, 64), // bucket 8
+                new Bucket(128.0, 199.0, 72), // bucket 9
+        });
+
+        assertEquals(h1.deepCopy(), h1.subtract(h2));
+
+        final ComboNrSketch h3 = new ComboNrSketch(20);
+        insertData(h3, 100, 300, 200);
+
+        verifyHistogram(h3, 200, 100, 299, new Bucket[]{
+                new Bucket(100.0, 107.63474115247546, 8), // bucket 1
+                new Bucket(107.63474115247546, 117.37651753019792, 10), // bucket 2
+                new Bucket(117.37651753019792, 128.0, 10), // bucket 3
+                new Bucket(128.0, 139.58498978115298, 12), // bucket 4
+                new Bucket(139.58498978115298, 152.2185107203483, 13), // bucket 5
+                new Bucket(152.2185107203483, 165.99546299532923, 13), // bucket 6
+                new Bucket(165.99546299532923, 181.01933598375618, 16), // bucket 7
+                new Bucket(181.01933598375618, 197.40298565221642, 16), // bucket 8
+                new Bucket(197.40298565221642, 215.2694823049509, 18), // bucket 9
+                new Bucket(215.2694823049509, 234.75303506039583, 19), // bucket 10
+                new Bucket(234.75303506039583, 256.0, 21), // bucket 11
+                new Bucket(256.0, 279.16997956230597, 24), // bucket 12
+                new Bucket(279.16997956230597, 299.0, 20), // bucket 13
+        });
+
+        final NrSketch h4 = h1.deepCopy().merge(h3);
+
+        verifyHistogram(h4, 400, 0, 299, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 128.0, 92), // bucket 8
+                new Bucket(128.0, 256.0, 200), // bucket 9
+                new Bucket(256.0, 299.0, 44), // bucket 10
+        });
+
+        verifyHistogram(h4.deepCopy().subtract(h3), 200, 0, 256, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 128.0, 64), // bucket 8
+                new Bucket(128.0, 256.0, 72), // bucket 9
+        });
+
+        final NrSketch h5 = h4.deepCopy().subtract(h1);
+        verifyHistogram(h5, 200, 64, 299, new Bucket[]{
+                new Bucket(64.0, 128.0, 28), // bucket 1
+                new Bucket(128.0, 256.0, 128), // bucket 2
+                new Bucket(256.0, 299.0, 44), // bucket 3
+        });
+
+        assertEquals("maxNumBucketsPerHistogram=10, histograms.size()=1\n" +
+                "totalCount=200, sum=39900.0, min=64.0, max=299.0, bucketHoldsPositiveNumbers=true, scale=0, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=6, indexStart=6, indexEnd=8, array={28,128,44,}}", h5.toString());
+
+        insertData(h4, -200, -100, 100);
+        final NrSketch h6 = h4.deepCopy().subtract(h1);
+        verifyHistogram(h6, 300, -200, 299, new Bucket[]{
+                new Bucket(-200.0, -197.40298565221642, 3), // bucket 1
+                new Bucket(-197.40298565221642, -181.01933598375618, 16), // bucket 2
+                new Bucket(-181.01933598375618, -165.99546299532923, 16), // bucket 3
+                new Bucket(-165.99546299532923, -152.2185107203483, 13), // bucket 4
+                new Bucket(-152.2185107203483, -139.58498978115298, 13), // bucket 5
+                new Bucket(-139.58498978115298, -128.0, 12), // bucket 6
+                new Bucket(-128.0, -117.37651753019792, 10), // bucket 7
+                new Bucket(-117.37651753019792, -107.63474115247546, 10), // bucket 8
+                new Bucket(-107.63474115247546, -101.0, 7), // bucket 9
+                new Bucket(64.0, 128.0, 28), // bucket 10
+                new Bucket(128.0, 256.0, 128), // bucket 11
+                new Bucket(256.0, 299.0, 44), // bucket 12
+        });
+
+        final NrSketch h7 = new ComboNrSketch(10);
+        insertData(h7, -200, -150, 50);
+
+        verifyHistogram(h7, 50, -200, -151, new Bucket[]{
+                new Bucket(-200.0, -197.40298565221642, 3), // bucket 1
+                new Bucket(-197.40298565221642, -189.03374668025592, 8), // bucket 2
+                new Bucket(-189.03374668025592, -181.01933598375618, 8), // bucket 3
+                new Bucket(-181.01933598375618, -173.34471000792226, 8), // bucket 4
+                new Bucket(-173.34471000792226, -165.99546299532923, 8), // bucket 5
+                new Bucket(-165.99546299532923, -158.95779994540595, 7), // bucket 6
+                new Bucket(-158.95779994540595, -152.2185107203483, 6), // bucket 7
+                new Bucket(-152.2185107203483, -151.0, 2), // bucket 8
+        });
+
+        verifyHistogram(h6.subtract(h7), 250, -152.2185107203483, 299, new Bucket[]{
+                new Bucket(-152.2185107203483, -139.58498978115298, 11), // bucket 1
+                new Bucket(-139.58498978115298, -128.0, 12), // bucket 2
+                new Bucket(-128.0, -117.37651753019792, 10), // bucket 3
+                new Bucket(-117.37651753019792, -107.63474115247546, 10), // bucket 4
+                new Bucket(-107.63474115247546, -101.0, 7), // bucket 5
+                new Bucket(64.0, 128.0, 28), // bucket 6
+                new Bucket(128.0, 256.0, 128), // bucket 7
+                new Bucket(256.0, 299.0, 44), // bucket 8
         });
     }
 

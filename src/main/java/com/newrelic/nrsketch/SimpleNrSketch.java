@@ -399,7 +399,7 @@ public class SimpleNrSketch implements NrSketch {
                 throw new IllegalArgumentException("SimpleNrSketch: merged min cannot be null when a component min is not null");
             }
             if (a.min == b.min) {
-                a.min = a.estimateMin();
+                a.min = Math.max(a.min, a.estimateMin());
             }
         }
 
@@ -408,7 +408,7 @@ public class SimpleNrSketch implements NrSketch {
                 throw new IllegalArgumentException("SimpleNrSketch: merged max cannot be null when a component max is not null");
             }
             if (a.max == b.max) {
-                a.max = a.estimateMax();
+                a.max = Math.min(a.max, a.estimateMax());
             }
         }
 

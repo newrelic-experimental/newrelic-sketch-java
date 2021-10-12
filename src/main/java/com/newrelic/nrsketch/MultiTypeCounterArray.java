@@ -150,6 +150,19 @@ public class MultiTypeCounterArray {
         return result;
     }
 
+    @Override
+    public String toString() {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("bytesPerCounter=" + bytesPerCounter);
+        builder.append(", array={");
+        for (int index = 0; index < getMaxSize(); index++) {
+            builder.append(get(index));
+            builder.append(",");
+        }
+        builder.append("}");
+        return builder.toString();
+    }
+
     private void convertByteToShort() {
         shortArray = new short[byteArray.length];
         for (int i = 0; i < byteArray.length; i++) {

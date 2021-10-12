@@ -41,10 +41,12 @@ public class ConcurrentNrSketchTest {
 
     // Equality is also tested in verifySerialization()
     @Test
-    public void testEqualAndHash() {
+    public void testEqualAndHashAndDeepCopy() {
         final ConcurrentNrSketch s1 = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
         final ConcurrentNrSketch s2 = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
         final ConcurrentNrSketch s3 = new ConcurrentNrSketch(sketchMaker.getSketch(99));
+
+        assertEquals(s1.deepCopy(), s1);
 
         assertNotEquals(s1, s3);
 
@@ -55,6 +57,8 @@ public class ConcurrentNrSketchTest {
         assertNotEquals(s1, s2);
         assertNotEquals(s1.hashCode(), s2.hashCode());
 
+        assertEquals(s1.deepCopy(), s1);
+
         s2.insert(11);
         assertEquals(s1, s2);
         assertEquals(s1.hashCode(), s2.hashCode());
@@ -62,6 +66,8 @@ public class ConcurrentNrSketchTest {
         s1.insert(-22);
         assertNotEquals(s1, s2);
         assertNotEquals(s1.hashCode(), s2.hashCode());
+
+        assertEquals(s1.deepCopy(), s1);
 
         s2.insert(-22);
         assertEquals(s1, s2);
@@ -133,7 +139,7 @@ public class ConcurrentNrSketchTest {
     }
 
     @Test
-    public void testMergeSameClass() {
+    public void testMergeAndSubtractionSameClass() {
         final ConcurrentNrSketch h1 = testConcurrentHistogram(10, 0, 100, 100, new Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
@@ -170,10 +176,21 @@ public class ConcurrentNrSketchTest {
         });
 
         verifySerialization(h1, 84, 93);
+
+        verifyHistogram(h1.deepCopy().subtract(h2), 100, 0, 99, new NrSketch.Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 99.0, 36), // bucket 8
+        });
     }
 
     @Test
-    public void testMergeDifferentClass() {
+    public void testMergeAndSubtractionDifferentClass() {
         final ConcurrentNrSketch h1 = testConcurrentHistogram(10, 0, 100, 100, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
@@ -210,6 +227,18 @@ public class ConcurrentNrSketchTest {
         });
 
         verifySerialization(h1, 84, 93);
+
+        // Subtract a wrapped sketch from a ConcurrentNrSketch.
+        verifyHistogram(h1.deepCopy().subtract(h2.getSketch()), 100, 0, 99, new NrSketch.Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 99.0, 36), // bucket 8
+        });
     }
 
     public static void verifySerialization(final ConcurrentNrSketch sketch, final int expectedSimpleNrSketchBufferSize, final int expectedComboSketchBufferSize) {

@@ -561,9 +561,11 @@ public class SimpleNrSketchTest {
     }
 
     @Test
-    public void testSubtraction() {
+    public void testSubtractionAndDeepCopy() {
         final SimpleNrSketch h1 = testHistogram(10, 0, 0, 0, EMPTY_BUCKET_LIST);
         final SimpleNrSketch h2 = testHistogram(10, 0, 0, 0, EMPTY_BUCKET_LIST);
+
+        assertEquals(h1, h1.deepCopy());
 
         h1.subtract(h2);
         verifyHistogram(h1, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);

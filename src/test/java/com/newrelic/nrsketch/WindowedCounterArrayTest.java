@@ -166,4 +166,28 @@ public class WindowedCounterArrayTest {
         assertEquals(a1, a2);
         assertEquals(1075453, a2.hashCode());
     }
+
+    @Test
+    public void testDeepCopy() {
+        final WindowedCounterArray a1 = new WindowedCounterArray(5);
+        WindowedCounterArray a2 = a1.deepCopy();
+
+        assertEquals(a1, a2);
+        assertEquals("maxSize=5, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808", a1.toString());
+        assertEquals("maxSize=5, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808", a2.toString());
+
+        a1.increment(100, 20);
+        assertNotEquals(a1, a2);
+
+        a2 = a1.deepCopy();
+        assertEquals(a1, a2);
+        assertEquals("maxSize=5, indexBase=100, indexStart=100, indexEnd=100, array={20,}", a1.toString());
+        assertEquals("maxSize=5, indexBase=100, indexStart=100, indexEnd=100, array={20,}", a2.toString());
+
+        a1.increment(98, 1000);
+        a2 = a1.deepCopy();
+        assertEquals(a1, a2);
+        assertEquals("maxSize=5, indexBase=100, indexStart=98, indexEnd=100, array={1000,0,20,}", a1.toString());
+        assertEquals("maxSize=5, indexBase=98, indexStart=98, indexEnd=100, array={1000,0,20,}", a2.toString());
+    }
 }

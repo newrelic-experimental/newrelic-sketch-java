@@ -60,13 +60,23 @@ public class ConcurrentNrSketch implements NrSketch {
     // Caller must ensure that "other" is also protected from concurrent modification.
     @Override
     public synchronized NrSketch merge(final NrSketch other) {
-        return (other instanceof ConcurrentNrSketch) ? sketch.merge(((ConcurrentNrSketch) other).sketch) : sketch.merge(other);
+        if (other instanceof ConcurrentNrSketch) {
+            sketch.merge(((ConcurrentNrSketch) other).sketch);
+        } else {
+            sketch.merge(other);
+        }
+        return this;
     }
 
     // Caller must ensure that "other" is also protected from concurrent modification.
     @Override
     public synchronized NrSketch subtract(final NrSketch other) {
-        return (other instanceof ConcurrentNrSketch) ? sketch.subtract(((ConcurrentNrSketch) other).sketch) : sketch.subtract(other);
+        if (other instanceof ConcurrentNrSketch) {
+            sketch.subtract(((ConcurrentNrSketch) other).sketch);
+        } else {
+            sketch.subtract(other);
+        }
+        return this;
     }
 
     @Override

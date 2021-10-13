@@ -29,10 +29,10 @@ public class WindowedCounterArray {
     }
 
     public WindowedCounterArray deepCopy() {
-        final WindowedCounterArray result = new WindowedCounterArray(this.maxSize, this.getBytesPerCounter());
+        final WindowedCounterArray result = new WindowedCounterArray(maxSize, getBytesPerCounter());
         if (indexStart != NULL_INDEX) {
             for (long index = indexStart; index <= indexEnd; index++) {
-               result.increment(index, get(index));
+                result.increment(index, get(index));
             }
         }
         return result;
@@ -74,8 +74,6 @@ public class WindowedCounterArray {
         }
         return result;
     }
-
-
 
     @Override
     public String toString() {

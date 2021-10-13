@@ -380,7 +380,7 @@ public class SimpleNrSketch implements NrSketch {
             for (long indexB = b.buckets.getIndexStart(); indexB <= b.buckets.getIndexEnd(); indexB++) {
                 final long indexA = indexB >> deltaB;
                 if (!a.buckets.increment(indexA, -b.buckets.get(indexB))) {
-                    throw new RuntimeException("merge(): failed to increment bucket");
+                    throw new RuntimeException("subtract(): failed to increment bucket");
                 }
                 if (a.buckets.get(indexA) < 0) {
                     throw new IllegalArgumentException("SimpleNrSketch subtraction: negative bucket count not expected");
@@ -450,14 +450,14 @@ public class SimpleNrSketch implements NrSketch {
             if (countForZero > 0) {
                 return 0;
             }
-            if (buckets.getIndexStart() != WindowedCounterArray.NULL_INDEX) {
+            if (!buckets.isEmpty()) {
                 return getBucketAbsoluteMin();
             }
             throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
 
         } else { // Bucket holds negative numbers
             if (countForNegatives > 0) {
-                if (buckets.getIndexStart() != WindowedCounterArray.NULL_INDEX) {
+                if (!buckets.isEmpty()) {
                     return -getBucketAbsoluteMax();
                 }
                 throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
@@ -475,7 +475,7 @@ public class SimpleNrSketch implements NrSketch {
             return Double.NaN;
         }
         if (bucketHoldsPositiveNumbers) {
-            if (buckets.getIndexStart() != WindowedCounterArray.NULL_INDEX) {
+            if (!buckets.isEmpty()) {
                 return getBucketAbsoluteMax();
             }
             if (countForZero > 0) {
@@ -490,7 +490,7 @@ public class SimpleNrSketch implements NrSketch {
             if (countForZero > 0) {
                 return 0;
             }
-            if (buckets.getIndexStart() != WindowedCounterArray.NULL_INDEX) {
+            if (!buckets.isEmpty()) {
                 return -getBucketAbsoluteMin();
             }
             throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");

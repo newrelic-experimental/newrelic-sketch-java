@@ -117,7 +117,7 @@ public class MultiTypeCounterArray {
     }
 
     public MultiTypeCounterArray deepCopy() {
-        final MultiTypeCounterArray result = new MultiTypeCounterArray(getMaxSize(), this.getBytesPerCounter());
+        final MultiTypeCounterArray result = new MultiTypeCounterArray(getMaxSize(), getBytesPerCounter());
         for (int i = 0; i < getMaxSize(); i++) {
             result.increment(i, get(i));
         }

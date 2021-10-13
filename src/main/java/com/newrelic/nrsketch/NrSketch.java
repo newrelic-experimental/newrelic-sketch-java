@@ -21,7 +21,7 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
     // An implementation should not modify "other".
     NrSketch merge(final NrSketch other);
 
-    // While merge() implements "addition", subtract() implements subtraction.
+    // While merge() implements addition, subtract() implements subtraction.
     // Subtraction is useful to produce a delta histogram from accumulative histograms.
     // This function subtracts "other" from "this". Always returns "this".
     // An implementation should not modify "other".

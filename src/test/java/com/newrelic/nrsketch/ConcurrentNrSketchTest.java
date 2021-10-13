@@ -21,6 +21,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
 public class ConcurrentNrSketchTest {
@@ -162,7 +163,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        h1.merge(h2); // Both are ConcurrentNrSketch
+        assertTrue(h1.merge(h2) instanceof ConcurrentNrSketch); // Both are ConcurrentNrSketch
 
         verifyHistogram(h1, 200, 0, 99, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 2), // bucket 1
@@ -177,7 +178,9 @@ public class ConcurrentNrSketchTest {
 
         verifySerialization(h1, 84, 93);
 
-        verifyHistogram(h1.deepCopy().subtract(h2), 100, 0, 99, new NrSketch.Bucket[]{
+        assertTrue(h1.subtract(h2) instanceof ConcurrentNrSketch);
+
+        verifyHistogram(h1, 100, 0, 99, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
@@ -213,7 +216,7 @@ public class ConcurrentNrSketchTest {
                 new Bucket(64.0, 99.0, 36), // bucket 8
         });
 
-        h1.merge(h2.getSketch()); // Merging ConcurrentNrSketch with wrapped sketch.
+        assertTrue(h1.merge(h2.getSketch()) instanceof ConcurrentNrSketch); // Merging ConcurrentNrSketch with wrapped sketch.
 
         verifyHistogram(h1, 200, 0, 99, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 2), // bucket 1
@@ -229,7 +232,9 @@ public class ConcurrentNrSketchTest {
         verifySerialization(h1, 84, 93);
 
         // Subtract a wrapped sketch from a ConcurrentNrSketch.
-        verifyHistogram(h1.deepCopy().subtract(h2.getSketch()), 100, 0, 99, new NrSketch.Bucket[]{
+        assertTrue(h1.subtract(h2.getSketch()) instanceof ConcurrentNrSketch);
+
+        verifyHistogram(h1, 100, 0, 99, new NrSketch.Bucket[]{
                 new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3

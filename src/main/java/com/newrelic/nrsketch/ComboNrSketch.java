@@ -87,6 +87,19 @@ public class ComboNrSketch implements NrSketch {
         }
     }
 
+    @Override
+    public NrSketch deepCopy() {
+        final List<NrSketch> nrSketches = new ArrayList<>(histograms.size());
+        for (NrSketch sketch : histograms) {
+            nrSketches.add(sketch.deepCopy());
+        }
+        return new ComboNrSketch(
+                maxNumBucketsPerHistogram,
+                initialScale,
+                indexerMaker,
+                nrSketches);
+    }
+
     private void setPositiveHistogram(final NrSketch histogram) {
         if (positiveHistogram != null) {
             throw new IllegalArgumentException("Attempting to set positiveHistogram twice");
@@ -139,6 +152,23 @@ public class ComboNrSketch implements NrSketch {
 
         if (other.positiveHistogram != null) {
             getOrCreatePositveHistogram().merge(other.positiveHistogram);
+        }
+        return this;
+    }
+
+    @Override
+    public NrSketch subtract(final NrSketch otherInterface) {
+        if (!(otherInterface instanceof ComboNrSketch)) {
+            throw new RuntimeException("Cannot subtract " + otherInterface.getClass().getName() + " from ComboNrSketch");
+        }
+        final ComboNrSketch other = (ComboNrSketch) otherInterface;
+
+        if (other.negativeHistogram != null) {
+            getOrCreateNegativeHistogram().subtract(other.negativeHistogram);
+        }
+
+        if (other.positiveHistogram != null) {
+            getOrCreatePositveHistogram().subtract(other.positiveHistogram);
         }
         return this;
     }

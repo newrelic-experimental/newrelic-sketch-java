@@ -116,6 +116,14 @@ public class MultiTypeCounterArray {
         }
     }
 
+    public MultiTypeCounterArray deepCopy() {
+        final MultiTypeCounterArray result = new MultiTypeCounterArray(getMaxSize(), getBytesPerCounter());
+        for (int i = 0; i < getMaxSize(); i++) {
+            result.increment(i, get(i));
+        }
+        return result;
+    }
+
     @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof MultiTypeCounterArray)) {
@@ -140,6 +148,19 @@ public class MultiTypeCounterArray {
             result = 31 * result + Long.hashCode(get(i));
         }
         return result;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("bytesPerCounter=" + bytesPerCounter);
+        builder.append(", array={");
+        for (int index = 0; index < getMaxSize(); index++) {
+            builder.append(get(index));
+            builder.append(",");
+        }
+        builder.append("}");
+        return builder.toString();
     }
 
     private void convertByteToShort() {

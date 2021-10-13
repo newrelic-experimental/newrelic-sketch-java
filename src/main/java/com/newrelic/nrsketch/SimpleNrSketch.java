@@ -89,6 +89,20 @@ public class SimpleNrSketch implements NrSketch {
         this.sum = sum;
     }
 
+    @Override
+    public NrSketch deepCopy() {
+        return new SimpleNrSketch(buckets.deepCopy(),
+                bucketHoldsPositiveNumbers,
+                getScale(),
+                indexerMaker,
+                totalCount,
+                countForNegatives,
+                countForZero,
+                min,
+                max,
+                sum);
+    }
+
     @SuppressFBWarnings(value = "FE_FLOATING_POINT_EQUALITY")
     @Override
     public boolean equals(final Object obj) {
@@ -122,7 +136,7 @@ public class SimpleNrSketch implements NrSketch {
         result = 31 * result + Long.hashCode(countForNegatives);
         result = 31 * result + Long.hashCode(countForZero);
         result = 31 * result + buckets.hashCode();
-        return  result;
+        return result;
     }
 
     public int getScale() {
@@ -340,6 +354,155 @@ public class SimpleNrSketch implements NrSketch {
         a.sum += b.sum;
 
         return a;
+    }
+
+    @Override
+    public NrSketch subtract(final NrSketch other) {
+        if (!(other instanceof SimpleNrSketch)) {
+            throw new RuntimeException("Cannot subtract " + other.getClass().getName() + " from SimpleNrSketch");
+        }
+        return subtract(this, (SimpleNrSketch) other);
+    }
+
+    // Subtract b from a. Returns a.
+    public static SimpleNrSketch subtract(final SimpleNrSketch a, final SimpleNrSketch b) {
+        if (a.bucketHoldsPositiveNumbers != b.bucketHoldsPositiveNumbers) {
+            throw new IllegalArgumentException("SimpleNrSketch subtraction not allowed when bucketHoldsPositiveNumbers are different");
+        }
+        if (!b.buckets.isEmpty()) {
+            if (a.getScale() > b.getScale()) {
+                throw new IllegalArgumentException("SimpleNrSketch subtraction: merged scale must be equal or lower than a component");
+            }
+
+            final int deltaB = b.getScale() - a.getScale();
+
+            // Now subtract b buckets from a.
+            for (long indexB = b.buckets.getIndexStart(); indexB <= b.buckets.getIndexEnd(); indexB++) {
+                final long indexA = indexB >> deltaB;
+                if (!a.buckets.increment(indexA, -b.buckets.get(indexB))) {
+                    throw new RuntimeException("subtract(): failed to increment bucket");
+                }
+                if (a.buckets.get(indexA) < 0) {
+                    throw new IllegalArgumentException("SimpleNrSketch subtraction: negative bucket count not expected");
+                }
+            }
+
+            a.shrinkBuckets();
+        }
+
+        a.totalCount = countSubtraction(a.totalCount, b.totalCount, "totalCount");
+        a.countForNegatives = countSubtraction(a.countForNegatives, b.countForNegatives, "countForNegatives");
+        a.countForZero = countSubtraction(a.countForZero, b.countForZero, "countForZero");
+
+        if (!Double.isNaN(b.min)) {
+            if (Double.isNaN(a.min)) {
+                throw new IllegalArgumentException("SimpleNrSketch: merged min cannot be null when a component min is not null");
+            }
+            if (a.min == b.min) {
+                a.min = Math.max(a.min, a.estimateMin());
+            }
+        }
+
+        if (!Double.isNaN(b.max)) {
+            if (Double.isNaN(a.max)) {
+                throw new IllegalArgumentException("SimpleNrSketch: merged max cannot be null when a component max is not null");
+            }
+            if (a.max == b.max) {
+                a.max = Math.min(a.max, a.estimateMax());
+            }
+        }
+
+        a.sum -= b.sum;
+
+        return a;
+    }
+
+    // Shrink buckets start and end index to exclude zero count buckets.
+    private void shrinkBuckets() {
+        // We could do an in-place shrink. But making a new bucket array is easier
+        // and it can shrink counter element size in MultiTypeArray.
+        final WindowedCounterArray newBuckets = new WindowedCounterArray(buckets.getMaxSize());
+        for (long index = buckets.getIndexStart(); index <= buckets.getIndexEnd(); index++) {
+            final long count = buckets.get(index);
+            if (count > 0) {
+                newBuckets.increment(index, count);
+            }
+        }
+        buckets = newBuckets;
+    }
+
+    private static long countSubtraction(final long a, final long b, final String label) {
+        if (a < b) {
+            throw new IllegalArgumentException("SimpleNrSketch: subtraction would result in negative " + label);
+        }
+        return a - b;
+    }
+
+    // Estimate min based on other fields.
+    private double estimateMin() {
+        if (totalCount == 0) {
+            return Double.NaN;
+        }
+        if (bucketHoldsPositiveNumbers) {
+            if (countForNegatives > 0) {
+                return -Double.MIN_NORMAL; // Wild guess
+            }
+            if (countForZero > 0) {
+                return 0;
+            }
+            if (!buckets.isEmpty()) {
+                return getBucketAbsoluteMin();
+            }
+            throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
+
+        } else { // Bucket holds negative numbers
+            if (countForNegatives > 0) {
+                if (!buckets.isEmpty()) {
+                    return -getBucketAbsoluteMax();
+                }
+                throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
+            }
+            if (countForZero > 0) {
+                return 0;
+            }
+            return Double.MIN_NORMAL; // Wild guess
+        }
+    }
+
+    // Estimate max based on other fields.
+    private double estimateMax() {
+        if (totalCount == 0) {
+            return Double.NaN;
+        }
+        if (bucketHoldsPositiveNumbers) {
+            if (!buckets.isEmpty()) {
+                return getBucketAbsoluteMax();
+            }
+            if (countForZero > 0) {
+                return 0;
+            }
+            return -Double.MIN_NORMAL; // Wild guess
+
+        } else { // Bucket holds negative numbers
+            if (getCountForPositives() > 0) {
+                return Double.MIN_NORMAL; // Wild guess
+            }
+            if (countForZero > 0) {
+                return 0;
+            }
+            if (!buckets.isEmpty()) {
+                return -getBucketAbsoluteMin();
+            }
+            throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
+        }
+    }
+
+    private double getBucketAbsoluteMin() {
+        return indexer.getBucketStart(buckets.getIndexStart());
+    }
+
+    private double getBucketAbsoluteMax() {
+        return indexer.getBucketEnd(buckets.getIndexEnd());
     }
 
     private enum IteratorState {

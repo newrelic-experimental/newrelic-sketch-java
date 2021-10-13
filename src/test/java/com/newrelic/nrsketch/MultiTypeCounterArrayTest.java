@@ -140,4 +140,38 @@ public class MultiTypeCounterArrayTest {
         assertEquals(a1, a2);
         assertEquals(28629182, a2.hashCode());
     }
+
+    @Test
+    public void testEqualAndDeepCopy() {
+        final MultiTypeCounterArray a1 = new MultiTypeCounterArray(5);
+        MultiTypeCounterArray a2 = a1.deepCopy();
+
+        assertEquals(a1, a2);
+        assertEquals("bytesPerCounter=1, array={0,0,0,0,0,}", a1.toString());
+        assertEquals("bytesPerCounter=1, array={0,0,0,0,0,}", a2.toString());
+
+        a1.increment(2, 20);
+        assertNotEquals(a1, a2);
+
+        a2 = a1.deepCopy();
+        assertEquals(a1, a2);
+        assertEquals("bytesPerCounter=1, array={0,0,20,0,0,}", a1.toString());
+        assertEquals("bytesPerCounter=1, array={0,0,20,0,0,}", a2.toString());
+
+        a1.increment(4, 1000);
+        assertNotEquals(a1, a2);
+
+        a2 = a1.deepCopy();
+        assertEquals(a1, a2);
+        assertEquals("bytesPerCounter=2, array={0,0,20,0,1000,}", a1.toString());
+        assertEquals("bytesPerCounter=2, array={0,0,20,0,1000,}", a2.toString());
+
+        a1.increment(0, 50_000);
+        assertNotEquals(a1, a2);
+
+        a2 = a1.deepCopy();
+        assertEquals(a1, a2);
+        assertEquals("bytesPerCounter=4, array={50000,0,20,0,1000,}", a1.toString());
+        assertEquals("bytesPerCounter=4, array={50000,0,20,0,1000,}", a2.toString());
+    }
 }

@@ -21,6 +21,15 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
     // An implementation should not modify "other".
     NrSketch merge(final NrSketch other);
 
+    // While merge() implements addition, subtract() implements subtraction.
+    // Subtraction is useful to produce a delta histogram from accumulative histograms.
+    // This function subtracts "other" from "this". Always returns "this".
+    // An implementation should not modify "other".
+    NrSketch subtract(final NrSketch other);
+
+    // Returns a deep copy of the sketch.
+    NrSketch deepCopy();
+
     // Get maximal number of buckets. An implementation should not use more than this number of buckets.
     int getMaxNumOfBuckets();
 
@@ -55,7 +64,7 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
             this.count = count;
         }
 
-        public Bucket makeCopy() {
+        public Bucket deepCopy() {
             return new Bucket(startValue, endValue, count);
         }
 

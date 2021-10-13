@@ -561,6 +561,126 @@ public class SimpleNrSketchTest {
     }
 
     @Test
+    public void testSubtractionAndDeepCopy() {
+        final SimpleNrSketch h1 = testHistogram(10, 0, 0, 0, EMPTY_BUCKET_LIST);
+        final SimpleNrSketch h2 = testHistogram(10, 0, 0, 0, EMPTY_BUCKET_LIST);
+
+        assertEquals(h1, h1.deepCopy());
+
+        h1.subtract(h2);
+        verifyHistogram(h1, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
+
+        insertData(h1, 0, 200, 200);
+        verifyHistogram(h1, 200, 0, 199, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 128.0, 64), // bucket 8
+                new Bucket(128.0, 199.0, 72), // bucket 9
+        });
+
+        assertEquals(h1.deepCopy(), h1.subtract(h2));
+
+        final SimpleNrSketch h3 = testHistogram(20, 100, 300, 200, new Bucket[]{
+                new Bucket(100.0, 107.63474115247546, 8), // bucket 1
+                new Bucket(107.63474115247546, 117.37651753019792, 10), // bucket 2
+                new Bucket(117.37651753019792, 128.0, 10), // bucket 3
+                new Bucket(128.0, 139.58498978115298, 12), // bucket 4
+                new Bucket(139.58498978115298, 152.2185107203483, 13), // bucket 5
+                new Bucket(152.2185107203483, 165.99546299532923, 13), // bucket 6
+                new Bucket(165.99546299532923, 181.01933598375618, 16), // bucket 7
+                new Bucket(181.01933598375618, 197.40298565221642, 16), // bucket 8
+                new Bucket(197.40298565221642, 215.2694823049509, 18), // bucket 9
+                new Bucket(215.2694823049509, 234.75303506039583, 19), // bucket 10
+                new Bucket(234.75303506039583, 256.0, 21), // bucket 11
+                new Bucket(256.0, 279.16997956230597, 24), // bucket 12
+                new Bucket(279.16997956230597, 299.0, 20), // bucket 13
+        });
+
+        final NrSketch h4 = h1.deepCopy().merge(h3);
+
+        verifyHistogram(h4, 400, 0, 299, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 128.0, 92), // bucket 8
+                new Bucket(128.0, 256.0, 200), // bucket 9
+                new Bucket(256.0, 299.0, 44), // bucket 10
+        });
+
+        verifyHistogram(h4.deepCopy().subtract(h3), 200, 0, 256, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 128.0, 64), // bucket 8
+                new Bucket(128.0, 256.0, 72), // bucket 9
+        });
+
+        final NrSketch h5 = h4.deepCopy().subtract(h1);
+        verifyHistogram(h5, 200, 64, 299, new Bucket[]{
+                new Bucket(64.0, 128.0, 28), // bucket 1
+                new Bucket(128.0, 256.0, 128), // bucket 2
+                new Bucket(256.0, 299.0, 44), // bucket 3
+        });
+
+        assertEquals("totalCount=200, sum=39900.0, min=64.0, max=299.0, bucketHoldsPositiveNumbers=true, scale=0, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=6, indexStart=6, indexEnd=8, array={28,128,44,}}", h5.toString());
+    }
+
+    @Test
+    public void testSubtraction2() {
+        final NrSketch h1 = testHistogram(10, 0, 100, 100, new Bucket[]{
+        new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(4.0, 8.0, 4), // bucket 4
+                new Bucket(8.0, 16.0, 8), // bucket 5
+                new Bucket(16.0, 32.0, 16), // bucket 6
+                new Bucket(32.0, 64.0, 32), // bucket 7
+                new Bucket(64.0, 99.0, 36), // bucket 8
+        });
+
+        final NrSketch h2 = h1.deepCopy();
+        h2.insert(50);
+
+        final NrSketch h3 = h2.deepCopy().subtract(h1);
+        verifyHistogram(h3, 1, 32, 64, new Bucket[]{
+                new Bucket(32.0, 64.0, 1), // bucket 1
+        });
+
+        assertEquals("totalCount=1, sum=50.0, min=32.0, max=64.0, bucketHoldsPositiveNumbers=true, scale=0, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=5, indexStart=5, indexEnd=5, array={1,}}", h3.toString());
+
+        final NrSketch h4 = new SimpleNrSketch(30);
+        h4.insert(4, 4);
+        h4.insert(50);
+        verifyHistogram(h1.deepCopy().subtract(h4), 95, 0, 99, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(1.0, 2.0, 1), // bucket 2
+                new Bucket(2.0, 4.0, 2), // bucket 3
+                new Bucket(8.0, 16.0, 8), // bucket 4
+                new Bucket(16.0, 32.0, 16), // bucket 5
+                new Bucket(32.0, 64.0, 31), // bucket 6
+                new Bucket(64.0, 99.0, 36), // bucket 7
+        });
+
+        final NrSketch h5 = h1.deepCopy().subtract(h1);
+        verifyHistogram(h5, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
+
+        assertEquals("totalCount=0, sum=0.0, min=NaN, max=NaN, bucketHoldsPositiveNumbers=true, scale=0, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808}", h5.toString());
+    }
+
+    @Test
     public void testMinMaxAndNegative() {
         final SimpleNrSketch h1 = testHistogram(5, 100, 200, 100, new Bucket[]{
                 new Bucket(100.0, 107.63474115247546, 8), // bucket 1
@@ -1140,7 +1260,7 @@ public class SimpleNrSketchTest {
                 assertTrue(bucket.startValue >= prevBucket.endValue);
             }
 
-            prevBucket = bucket.makeCopy();
+            prevBucket = bucket.deepCopy();
         }
 
         assertEquals(expectedBuckets.length, index);

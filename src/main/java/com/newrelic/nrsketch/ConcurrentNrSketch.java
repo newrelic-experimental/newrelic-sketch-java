@@ -29,6 +29,11 @@ public class ConcurrentNrSketch implements NrSketch {
         this.sketch = sketch;
     }
 
+    @Override
+    public NrSketch deepCopy() {
+        return new ConcurrentNrSketch(sketch.deepCopy());
+    }
+
     @SuppressFBWarnings(value = "EI_EXPOSE_REP")
     public NrSketch getSketch() {
         return sketch;
@@ -55,7 +60,23 @@ public class ConcurrentNrSketch implements NrSketch {
     // Caller must ensure that "other" is also protected from concurrent modification.
     @Override
     public synchronized NrSketch merge(final NrSketch other) {
-        return (other instanceof ConcurrentNrSketch) ? sketch.merge(((ConcurrentNrSketch) other).sketch) : sketch.merge(other);
+        if (other instanceof ConcurrentNrSketch) {
+            sketch.merge(((ConcurrentNrSketch) other).sketch);
+        } else {
+            sketch.merge(other);
+        }
+        return this;
+    }
+
+    // Caller must ensure that "other" is also protected from concurrent modification.
+    @Override
+    public synchronized NrSketch subtract(final NrSketch other) {
+        if (other instanceof ConcurrentNrSketch) {
+            sketch.subtract(((ConcurrentNrSketch) other).sketch);
+        } else {
+            sketch.subtract(other);
+        }
+        return this;
     }
 
     @Override

@@ -5,15 +5,14 @@
 ## Introduction
 
 New Relic Sketch (aka NrSketch)  is a scaled base2 exponential histogram. It is adapted from the histogram code used at
-[New Relic](https://newrelic.com/). It is a prototype for Open Telemetry Enhancement Proposal
+[New Relic](https://newrelic.com/). It is an implementation of the histogram described in the Open Telemetry Enhancement
+Proposal
 149 [Add exponential bucketing to histogram protobuf](https://github.com/open-telemetry/oteps/blob/main/text/0149-exponential-histogram.md)
-, with matching "ExponentialHistogram" message
-in [transport protocol](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto)
-, and
-"ExponentialHistogram" data points
-in [data model](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md)
-. As a prototype, it is meant to demonstrate ideas. Some functionality may be missing. For example, uploading the
-library to an artifactory repository has not been implemented. Work to "productize" the prototype is in progress.
+. The proposal has been accepted as "ExponentialHistogram" in Open
+Telemetry [data model](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md)
+and [transport protocol](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto)
+. Though NrSketch conforms to Open Telemetry standards, it is written as a general purpose library, with no dependency
+on any third party, including any Open Telemetry code.
 
 A scaled base2 exponential histogram has these properties:
 
@@ -76,6 +75,7 @@ features:
 * Small memory footprint. It uses the smallest integer type (1, 2, 4, or 8 byte per counter) that can hold the bucket
   counts.
 * Histogram merge code included
+* Histogram subtraction code included. Subtraction can be used to compute delta from accumulative metrics.
 * Percentile calculation code included
 * Serialization and deserialization code included
 * Full "double" range, including subnormal numbers are supported, at all meaningful scales (-11 to 52, inclusive).

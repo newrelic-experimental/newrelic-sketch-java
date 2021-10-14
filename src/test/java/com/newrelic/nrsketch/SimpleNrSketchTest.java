@@ -67,8 +67,162 @@ public class SimpleNrSketchTest {
         assertEquals(expectedBucketHoldsPositiveNumbers, sketch.isBucketHoldsPositiveNumbers());
         assertEquals(expectedIndexerMaker, sketch.getIndexerMaker());
     }
-    
-    // Equality is also tested in verifySerialization() 
+
+    @Test
+    public void testDeserializerConstructor() {
+        // Empty sketch
+        final SimpleNrSketch s1 = new SimpleNrSketch(4, SimpleNrSketch.DEFAULT_INDEXER_MAKER, new WindowedCounterArray(10), true, 0, Double.NaN, Double.NaN, 0);
+
+        assertEquals("totalCount=0, sum=0.0, min=NaN, max=NaN, bucketHoldsPositiveNumbers=true, scale=4, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808}", s1.toString());
+        verifyHistogram(s1, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
+
+        s1.insert(10);
+        s1.insert(20);
+
+        // With buckets
+        SimpleNrSketch s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 0, Double.NaN, Double.NaN, 30);
+
+        assertEquals("totalCount=2, sum=30.0, min=9.513656920021768, max=20.749432874416154, bucketHoldsPositiveNumbers=true, scale=3, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 2, 9.513656920021768, 20.749432874416154, new Bucket[]{
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 1
+                new Bucket(19.027313840043536, 20.749432874416154, 1), // bucket 2
+        });
+
+        // With zero count
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 2, Double.NaN, Double.NaN, 30);
+
+        assertEquals("totalCount=4, sum=30.0, min=0.0, max=20.749432874416154, bucketHoldsPositiveNumbers=true, scale=3, countForNegatives=0, countForZero=2, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 4, 0, 20.749432874416154, new Bucket[]{
+                new Bucket(0.0, 0.0, 2), // bucket 1
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
+                new Bucket(19.027313840043536, 20.749432874416154, 1), // bucket 3
+        });
+
+        // With good min and max
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 0, 10, 20, 30);
+
+        verifyHistogram(s2, 2, 10, 20, new Bucket[]{
+                new Bucket(10, 10.374716437208077, 1), // bucket 1
+                new Bucket(19.027313840043536, 20, 1), // bucket 2
+        });
+
+        // With bad min and max
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 0, 5, 6, 30);
+
+        verifyHistogram(s2, 2, 9.513656920021768, 20.749432874416154, new Bucket[]{
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 1
+                new Bucket(19.027313840043536, 20.749432874416154, 1), // bucket 2
+        });
+
+        // With bad min and max, and sum, and a zero value.
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 1, -3, 60, Double.NaN);
+
+        verifyHistogram(s2, 3, 0, 20.749432874416154, new Bucket[]{
+                new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
+                new Bucket(19.027313840043536, 20.749432874416154, 1), // bucket 3
+        });
+        assertEquals(0, s2.getSum(), 0);
+
+        // Mixed positive and negative values
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 0, Double.NaN, Double.NaN, 30, 3, 1); // Add one negative value
+
+        assertEquals("totalCount=3, sum=30.0, min=-2.2250738585072014E-308, max=20.749432874416154, bucketHoldsPositiveNumbers=true, scale=3, countForNegatives=1, countForZero=0, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 3, -2.2250738585072014E-308, 20.749432874416154, new Bucket[]{
+                new Bucket(-2.2250738585072014E-308, 0.0, 1), // bucket 1
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
+                new Bucket(19.027313840043536, 20.749432874416154, 1), // bucket 3
+        });
+
+        // Mixed positive and negative values, with min/max
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 0, -40, 20, 30, 3, 1); // Add one negative value
+
+        assertEquals("totalCount=3, sum=30.0, min=-40.0, max=20.0, bucketHoldsPositiveNumbers=true, scale=3, countForNegatives=1, countForZero=0, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 3, -40, 20, new Bucket[]{
+                new Bucket(-40.0, 0.0, 1), // bucket 1
+                new Bucket(9.513656920021768, 10.374716437208077, 1), // bucket 2
+                new Bucket(19.027313840043536, 20.0, 1), // bucket 3
+        });
+    }
+
+    @Test
+    public void testDeserializerConstructorNegativeSketch() {
+        // Empty sketch
+        final SimpleNrSketch s1 = new SimpleNrSketch(4, SimpleNrSketch.DEFAULT_INDEXER_MAKER, new WindowedCounterArray(10), false, 0, Double.NaN, Double.NaN, 0);
+
+        assertEquals("totalCount=0, sum=0.0, min=NaN, max=NaN, bucketHoldsPositiveNumbers=false, scale=4, countForNegatives=0, countForZero=0, buckets={maxSize=10, indexBase=-9223372036854775808, indexStart=-9223372036854775808, indexEnd=-9223372036854775808}", s1.toString());
+        verifyHistogram(s1, 0, Double.NaN, Double.NaN, EMPTY_BUCKET_LIST);
+
+        s1.insert(-10);
+        s1.insert(-20);
+
+        // With buckets
+        SimpleNrSketch s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 0, Double.NaN, Double.NaN, -30);
+
+        assertEquals("totalCount=2, sum=-30.0, min=-20.749432874416154, max=-9.513656920021768, bucketHoldsPositiveNumbers=false, scale=3, countForNegatives=2, countForZero=0, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 2, -20.749432874416154, -9.513656920021768, new Bucket[]{
+                new Bucket(-20.749432874416154, -19.027313840043536, 1), // bucket 1
+                new Bucket(-10.374716437208077, -9.513656920021768, 1), // bucket 2
+        });
+
+        // With zero count
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 2, Double.NaN, Double.NaN, -30);
+
+        assertEquals("totalCount=4, sum=-30.0, min=-20.749432874416154, max=0.0, bucketHoldsPositiveNumbers=false, scale=3, countForNegatives=2, countForZero=2, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 4, -20.749432874416154, 0, new Bucket[]{
+                new Bucket(-20.749432874416154, -19.027313840043536, 1), // bucket 1
+                new Bucket(-10.374716437208077, -9.513656920021768, 1), // bucket 2
+                new Bucket(0.0, 0.0, 2), // bucket 3
+        });
+
+        // With good min and max
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 0, -20, -10, -30);
+
+        verifyHistogram(s2, 2, -20, -10, new Bucket[]{
+                new Bucket(-20.0, -19.027313840043536, 1), // bucket 1
+                new Bucket(-10.374716437208077, -10.0, 1), // bucket 2
+        });
+
+        // With bad min and max
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 0, -5, -6, -30);
+
+        verifyHistogram(s2, 2, -20.749432874416154, -9.513656920021768, new Bucket[]{
+                new Bucket(-20.749432874416154, -19.027313840043536, 1), // bucket 1
+                new Bucket(-10.374716437208077, -9.513656920021768, 1), // bucket 2
+        });
+
+        // With bad min and max, and sum, and a zero value.
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 1, -3, 60, Double.NaN);
+
+        verifyHistogram(s2, 3, -20.749432874416154, 0, new Bucket[]{
+                new Bucket(-20.749432874416154, -19.027313840043536, 1), // bucket 1
+                new Bucket(-10.374716437208077, -9.513656920021768, 1), // bucket 2
+                new Bucket(0.0, 0.0, 1), // bucket 3
+        });
+        assertEquals(0, s2.getSum(), 0);
+
+        // Mixed positive and negative values
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 0, Double.NaN, Double.NaN, 30, 3, 2); // Add one positive value
+
+        assertEquals("totalCount=3, sum=30.0, min=-20.749432874416154, max=2.2250738585072014E-308, bucketHoldsPositiveNumbers=false, scale=3, countForNegatives=2, countForZero=0, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 3, -20.749432874416154, 2.2250738585072014E-308, new Bucket[]{
+                new Bucket(-20.749432874416154, -19.027313840043536, 1), // bucket 1
+                new Bucket(-10.374716437208077, -9.513656920021768, 1), // bucket 2
+                new Bucket(0.0, 2.2250738585072014E-308, 1), // bucket 3
+        });
+
+        // Mixed positive and negative values, with min/max
+        s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 0, -20, 40, 30, 3, 2); // Add one positive value
+
+        assertEquals("totalCount=3, sum=30.0, min=-20.0, max=40.0, bucketHoldsPositiveNumbers=false, scale=3, countForNegatives=2, countForZero=0, buckets={maxSize=10, indexBase=26, indexStart=26, indexEnd=34, array={1,0,0,0,0,0,0,0,1,}}", s2.toString());
+        verifyHistogram(s2, 3, -20, 40, new Bucket[]{
+                new Bucket(-20.0, -19.027313840043536, 1), // bucket 1
+                new Bucket(-10.374716437208077, -9.513656920021768, 1), // bucket 2
+                new Bucket(0.0, 40.0, 1), // bucket 3
+        });
+    }
+
+    // Equality is also tested in verifySerialization()
     @Test
     public void testEqualAndHash() {
         final SimpleNrSketch s1 = new SimpleNrSketch();
@@ -641,7 +795,7 @@ public class SimpleNrSketchTest {
     @Test
     public void testSubtraction2() {
         final NrSketch h1 = testHistogram(10, 0, 100, 100, new Bucket[]{
-        new Bucket(0.0, 0.0, 1), // bucket 1
+                new Bucket(0.0, 0.0, 1), // bucket 1
                 new Bucket(1.0, 2.0, 1), // bucket 2
                 new Bucket(2.0, 4.0, 2), // bucket 3
                 new Bucket(4.0, 8.0, 4), // bucket 4

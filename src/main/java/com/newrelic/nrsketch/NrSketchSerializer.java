@@ -142,16 +142,17 @@ public class NrSketchSerializer {
         final WindowedCounterArray buckets = WindowedCounterArraySerializer.deserializeWindowedCounterArray(buffer);
 
         return new SimpleNrSketch(
-                buckets,
-                bucketHoldsPositiveNumbers,
                 scale,
                 indexerMaker,
-                count,
-                countForNegatives,
+                buckets,
+                bucketHoldsPositiveNumbers,
                 countForZero,
                 min,
                 max,
-                sum);
+                sum,
+                count,
+                countForNegatives
+        );
     }
 
     static byte getIndexerMakerCode(Function<Integer, ScaledIndexer> indexMaker) {

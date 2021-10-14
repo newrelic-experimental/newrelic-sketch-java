@@ -114,7 +114,7 @@ public class SimpleNrSketchTest {
                 new Bucket(19.027313840043536, 20.749432874416154, 1), // bucket 2
         });
 
-        // With bad min and max, and sum
+        // With bad min and max, and sum, and a zero value.
         s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), true, 1, -3, 60, Double.NaN);
 
         verifyHistogram(s2, 3, 0, 20.749432874416154, new Bucket[]{
@@ -191,7 +191,7 @@ public class SimpleNrSketchTest {
                 new Bucket(-10.374716437208077, -9.513656920021768, 1), // bucket 2
         });
 
-        // With bad min and max, and sum
+        // With bad min and max, and sum, and a zero value.
         s2 = new SimpleNrSketch(s1.getScale(), SimpleNrSketch.DEFAULT_INDEXER_MAKER, s1.getBuckets(), false, 1, -3, 60, Double.NaN);
 
         verifyHistogram(s2, 3, -20.749432874416154, 0, new Bucket[]{

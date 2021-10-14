@@ -67,9 +67,12 @@ public class SimpleNrSketch implements NrSketch {
         this.indexer = indexerMaker.apply(initialScale);
     }
 
-    // For deserialization only. For protocols where totalCount and countForNegatives are not present.
+    // For deserialization only. For protocols where totalCount or countForNegatives is unavailable or unreliable.
+    // Assumes positive only or negative only sketches (no mixed positive and negative values in one sketch).
     // When sketch is empty, use 0 for sum and NaN for min and max.
-    // When min or max is not available, use NaN and the function will estimate min or max from other fields.
+    // When min or max is not available, use NaN and the function will estimate min or max from the buckets.
+    // When min and max are available, this function will still adjust them for consistency with the buckets.
+    // When sum is not available, use 0.
     public SimpleNrSketch(final int scale,
                           final Function<Integer, ScaledIndexer> indexerMaker,
                           final WindowedCounterArray buckets,
@@ -92,9 +95,12 @@ public class SimpleNrSketch implements NrSketch {
     }
 
     // For deserialization only. Caller must ensure that the count fields are consistent among themselves.
+    // When totalCount or countForNegatives is unavailable or unreliable, it is recommended to call the constructor
+    // without totalCount and countForNegatives to let the callee compute them.
     // When sketch is empty, use 0 for sum and NaN for min and max.
     // When min or max is not available, use NaN and the function will estimate min or max from the buckets.
-    // When min and max are available, this function will adjust them for consistency with the buckets.
+    // When min and max are available, this function will still adjust them for consistency with the buckets.
+    // When sum is not available, use 0.
     public SimpleNrSketch(final int scale,
                           final Function<Integer, ScaledIndexer> indexerMaker,
                           final WindowedCounterArray buckets,
@@ -111,10 +117,15 @@ public class SimpleNrSketch implements NrSketch {
         this.indexerMaker = indexerMaker;
 
         if (totalCount < 0) {
+            if (countForNegatives >= 0) {
+                throw new IllegalArgumentException("SimpleSketch constructor: totalCount and countForNegatives must be both set or both unset");
+            }
+            // Assumes positive only or negative only sketches (no mixed positive and negative values in one sketch).
             final long bucketTotalCount = buckets.getTotalCount();
             this.totalCount = bucketTotalCount + countForZero;
             this.countForNegatives = bucketHoldsPositiveNumbers ? 0 : bucketTotalCount;
         } else {
+            // To avoid calling buckets.getTotalCount(), no counter consistency check is done.
             this.totalCount = totalCount;
             this.countForNegatives = countForNegatives;
         }
@@ -542,7 +553,7 @@ public class SimpleNrSketch implements NrSketch {
     }
 
     // Is "value" in "bucket"?
-    private boolean inBucket(final double value, final Bucket bucket) {
+    private static boolean inBucket(final double value, final Bucket bucket) {
         return !Double.isNaN(value) && value >= bucket.startValue && value <= bucket.endValue;
     }
 

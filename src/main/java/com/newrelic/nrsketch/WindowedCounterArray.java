@@ -150,6 +150,17 @@ public class WindowedCounterArray {
         return backingArray.get(getBackingArrayIndex(index));
     }
 
+    public long getTotalCount() {
+        if (isEmpty()) {
+            return 0;
+        }
+        long total = 0;
+        for (long index = getIndexStart(); index <= getIndexEnd(); index++) {
+            total += get(index);
+        }
+        return total;
+    }
+
     // Handle index wrap-around in backing array.
     private int getBackingArrayIndex(final long index) {
         int backArrayIndex = (int) (index - indexBase);

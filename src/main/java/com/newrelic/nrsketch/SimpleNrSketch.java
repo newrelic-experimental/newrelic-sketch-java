@@ -64,43 +64,83 @@ public class SimpleNrSketch implements NrSketch {
         this.indexer = indexerMaker.apply(initialScale);
     }
 
-    // For deserialization only
-    public SimpleNrSketch(final WindowedCounterArray buckets,
-                          final boolean bucketHoldsPositiveNumbers,
-                          final int scale,
+    // For deserialization only. For protocols where totalCount and countForNegatives are not present.
+    // When sketch is empty, use 0 for sum and NaN for min and max.
+    // When min or max is not available, use NaN and the function will estimate min or max from other fields.
+    public SimpleNrSketch(final int scale,
                           final Function<Integer, ScaledIndexer> indexerMaker,
-                          final long totalCount,
-                          final long countForNegatives,
+                          final WindowedCounterArray buckets,
+                          final boolean bucketHoldsPositiveNumbers,
                           final long countForZero,
                           final double min,
                           final double max,
                           final double sum) {
+        this(scale,
+                indexerMaker,
+                buckets,
+                bucketHoldsPositiveNumbers,
+                countForZero,
+                min,
+                max,
+                sum,
+                -1,
+                -1
+        );
+    }
+
+    // For deserialization only. Caller must ensure that the count fields are consistent among themselves.
+    // When sketch is empty, use 0 for sum and NaN for min and max.
+    // When min or max is not available, use NaN and the function will estimate min or max from other fields.
+    public SimpleNrSketch(final int scale,
+                          final Function<Integer, ScaledIndexer> indexerMaker,
+                          final WindowedCounterArray buckets,
+                          final boolean bucketHoldsPositiveNumbers,
+                          final long countForZero,
+                          final double min,
+                          final double max,
+                          final double sum,
+                          final long totalCount,
+                          final long countForNegatives) {
         this.buckets = buckets;
         this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
         this.indexer = indexerMaker.apply(scale);
         this.indexerMaker = indexerMaker;
 
-        this.totalCount = totalCount;
-        this.countForNegatives = countForNegatives;
+        if (totalCount < 0) {
+            final long bucketTotalCount = buckets.getTotalCount();
+            this.totalCount = bucketTotalCount + countForZero;
+            this.countForNegatives = bucketHoldsPositiveNumbers ? 0 : bucketTotalCount;
+        } else {
+            this.totalCount = totalCount;
+            this.countForNegatives = countForNegatives;
+        }
+
         this.countForZero = countForZero;
 
-        this.min = min;
-        this.max = max;
-        this.sum = sum;
+        if (totalCount <= 0) {
+            this.min = Double.NaN;
+            this.max = Double.NaN;
+            this.sum = 0;
+        } else {
+            this.min = Double.isNaN(min) ? estimateMin() : min;
+            this.max = Double.isNaN(max) ? estimateMax() : max;
+            this.sum = Double.isNaN(sum) ? 0 : sum;
+        }
     }
 
     @Override
     public NrSketch deepCopy() {
-        return new SimpleNrSketch(buckets.deepCopy(),
-                bucketHoldsPositiveNumbers,
-                getScale(),
+        return new SimpleNrSketch(getScale(),
                 indexerMaker,
-                totalCount,
-                countForNegatives,
+                buckets.deepCopy(),
+                bucketHoldsPositiveNumbers,
                 countForZero,
                 min,
                 max,
-                sum);
+                sum,
+                totalCount,
+                countForNegatives
+        );
     }
 
     @SuppressFBWarnings(value = "FE_FLOATING_POINT_EQUALITY")

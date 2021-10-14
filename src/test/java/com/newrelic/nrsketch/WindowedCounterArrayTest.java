@@ -20,6 +20,7 @@ public class WindowedCounterArrayTest {
 
         assertEquals(10, array.getMaxSize());
         assertTrue(array.isEmpty());
+        assertEquals(0, array.getTotalCount());
 
         assertMeta(array, 0, WindowedCounterArray.NULL_INDEX, WindowedCounterArray.NULL_INDEX);
 
@@ -44,6 +45,7 @@ public class WindowedCounterArrayTest {
         for (int i = 95; i <= 104; i++) {
             assertEquals(expectedArray[i - 95], array.get(i));
         }
+        assertEquals(16, array.getTotalCount());
     }
 
     @Test

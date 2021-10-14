@@ -29,7 +29,7 @@ public class LogIndexer extends ScaledExpIndexer {
     public long getBucketIndex(final double value) {
         // Use floor() to round toward -Infinity. Plain "(long)" rounds toward 0.
         // Example: (long) -1.5 = -1; floor(-1.5) = -2
-        return (long) Math.floor(Math.log(value) * scaleFactor);
+        return (long) Math.floor(Math.log(Math.abs(value)) * scaleFactor);
     }
 
     @Override

@@ -14,6 +14,9 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 
+import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
+import static com.newrelic.nrsketch.ComboNrSketch.minWithNan;
+
 // The bucketHoldsPositiveNumbers flag controls whether positive or negative numbers go to the bucket array.
 // It controls which kind of numbers are favored. The kind going into the bucket array will have high
 // distribution resolution, while the other kind will be counted by only one counter, "countForNegatives",
@@ -90,7 +93,8 @@ public class SimpleNrSketch implements NrSketch {
 
     // For deserialization only. Caller must ensure that the count fields are consistent among themselves.
     // When sketch is empty, use 0 for sum and NaN for min and max.
-    // When min or max is not available, use NaN and the function will estimate min or max from other fields.
+    // When min or max is not available, use NaN and the function will estimate min or max from the buckets.
+    // When min and max are available, this function will adjust them for consistency with the buckets.
     public SimpleNrSketch(final int scale,
                           final Function<Integer, ScaledIndexer> indexerMaker,
                           final WindowedCounterArray buckets,
@@ -117,13 +121,13 @@ public class SimpleNrSketch implements NrSketch {
 
         this.countForZero = countForZero;
 
-        if (totalCount <= 0) {
+        if (this.totalCount <= 0) {
             this.min = Double.NaN;
             this.max = Double.NaN;
             this.sum = 0;
         } else {
-            this.min = Double.isNaN(min) ? estimateMin() : min;
-            this.max = Double.isNaN(max) ? estimateMax() : max;
+            this.min = estimateMin(min); // Don't trust input min and max. Use them as hint only.
+            this.max = estimateMax(max);
             this.sum = Double.isNaN(sum) ? 0 : sum;
         }
     }
@@ -439,7 +443,7 @@ public class SimpleNrSketch implements NrSketch {
                 throw new IllegalArgumentException("SimpleNrSketch: merged min cannot be null when a component min is not null");
             }
             if (a.min == b.min) {
-                a.min = Math.max(a.min, a.estimateMin());
+                a.min = a.estimateMin(a.min);
             }
         }
 
@@ -448,7 +452,7 @@ public class SimpleNrSketch implements NrSketch {
                 throw new IllegalArgumentException("SimpleNrSketch: merged max cannot be null when a component max is not null");
             }
             if (a.max == b.max) {
-                a.max = Math.min(a.max, a.estimateMax());
+                a.max = a.estimateMax(a.max);
             }
         }
 
@@ -478,71 +482,94 @@ public class SimpleNrSketch implements NrSketch {
         return a - b;
     }
 
-    // Estimate min based on other fields.
-    private double estimateMin() {
+    // Estimate min based on other fields. hint may be NaN
+    private double estimateMin(final double hint) {
         if (totalCount == 0) {
             return Double.NaN;
         }
         if (bucketHoldsPositiveNumbers) {
             if (countForNegatives > 0) {
-                return -Double.MIN_NORMAL; // Wild guess
+                return minWithNan(hint, -Double.MIN_NORMAL);
             }
             if (countForZero > 0) {
                 return 0;
             }
             if (!buckets.isEmpty()) {
-                return getBucketAbsoluteMin();
+                return getBucketMin(hint);
             }
             throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
 
         } else { // Bucket holds negative numbers
             if (countForNegatives > 0) {
                 if (!buckets.isEmpty()) {
-                    return -getBucketAbsoluteMax();
+                    return getBucketMin(hint);
                 }
                 throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
             }
             if (countForZero > 0) {
                 return 0;
             }
-            return Double.MIN_NORMAL; // Wild guess
+            return maxWithNan(hint, Double.MIN_NORMAL);
         }
     }
 
-    // Estimate max based on other fields.
-    private double estimateMax() {
+    // Estimate max based on other fields. hint may be NaN
+    private double estimateMax(final double hint) {
         if (totalCount == 0) {
             return Double.NaN;
         }
         if (bucketHoldsPositiveNumbers) {
             if (!buckets.isEmpty()) {
-                return getBucketAbsoluteMax();
+                return getBucketMax(hint);
             }
             if (countForZero > 0) {
                 return 0;
             }
-            return -Double.MIN_NORMAL; // Wild guess
+            return minWithNan(hint, -Double.MIN_NORMAL);
 
         } else { // Bucket holds negative numbers
             if (getCountForPositives() > 0) {
-                return Double.MIN_NORMAL; // Wild guess
+                return maxWithNan(hint, Double.MIN_NORMAL);
             }
             if (countForZero > 0) {
                 return 0;
             }
             if (!buckets.isEmpty()) {
-                return -getBucketAbsoluteMin();
+                return getBucketMax(hint);
             }
             throw new RuntimeException("SimpleNrSketch: Empty buckets not expected");
         }
     }
 
-    private double getBucketAbsoluteMin() {
-        return indexer.getBucketStart(buckets.getIndexStart());
+    // Is "value" in "bucket"?
+    private boolean inBucket(final double value, final Bucket bucket) {
+        return !Double.isNaN(value) && value >= bucket.startValue && value <= bucket.endValue;
     }
 
-    private double getBucketAbsoluteMax() {
-        return indexer.getBucketEnd(buckets.getIndexEnd());
+    // Get the bucket with min values. Precondition: buckets are not empty
+    private Bucket getMinBucket() {
+        return bucketHoldsPositiveNumbers?
+                new Bucket(indexer.getBucketStart(buckets.getIndexStart()), indexer.getBucketEnd(buckets.getIndexStart()), 1)
+                : new Bucket(-indexer.getBucketEnd(buckets.getIndexEnd()), -indexer.getBucketStart(buckets.getIndexEnd()), 1);
+    }
+
+    // Get the bucket with max values. Precondition: buckets are not empty
+    private Bucket getMaxBucket() {
+        return bucketHoldsPositiveNumbers?
+                new Bucket(indexer.getBucketStart(buckets.getIndexEnd()), indexer.getBucketEnd(buckets.getIndexEnd()), 1)
+                : new Bucket(-indexer.getBucketEnd(buckets.getIndexStart()), -indexer.getBucketStart(buckets.getIndexStart()), 1);
+    }
+
+    // Get min from the buckets. hint may be NaN
+    private double getBucketMin(final double hint) {
+        final Bucket minBucket = getMinBucket();
+        return inBucket(hint, minBucket)? hint : minBucket.startValue;
+    }
+
+    // Get max from the buckets. hint may be NaN
+    private double getBucketMax(final double hint) {
+        final Bucket maxBucket = getMaxBucket();
+        return inBucket(hint, maxBucket)? hint : maxBucket.endValue;
     }
 
     private enum IteratorState {

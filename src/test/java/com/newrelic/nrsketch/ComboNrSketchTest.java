@@ -15,8 +15,12 @@ import java.util.function.Function;
 
 import static com.newrelic.nrsketch.SimpleNrSketchTest.EMPTY_BUCKET_LIST;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.INITIAL_ERROR;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE0_ERROR;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE1_ERROR;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE2_ERROR;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE4_ERROR;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.TEST_INIT_SCALE;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.TEST_MAX_BUCKETS;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.insertData;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
@@ -26,10 +30,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ComboNrSketchTest {
-    private static final double SCALE2_ERROR = 0.08642723372588978;
-    private static final double SCALE1_ERROR = 0.17157287525380996;
-    private static final double SCALE0_ERROR = 1.0 / 3;
-
     @Test
     public void testConstructors() {
         ComboNrSketch sketch = new ComboNrSketch();
@@ -72,8 +72,8 @@ public class ComboNrSketchTest {
     // Equality is also tested in verifySerialization()
     @Test
     public void testEqualAndHash() {
-        final ComboNrSketch s1 = new ComboNrSketch();
-        final ComboNrSketch s2 = new ComboNrSketch();
+        final ComboNrSketch s1 = new ComboNrSketch(TEST_MAX_BUCKETS);
+        final ComboNrSketch s2 = new ComboNrSketch(TEST_MAX_BUCKETS);
         final ComboNrSketch s3 = new ComboNrSketch(99);
 
         assertNotEquals(s1, s3);
@@ -772,8 +772,7 @@ public class ComboNrSketchTest {
 
     @Test
     public void testPercentile() {
-        final int nBuckets = 320;
-        final ComboNrSketch histogram = new ComboNrSketch(); // Using default number of buckets
+        final ComboNrSketch histogram = new ComboNrSketch(TEST_MAX_BUCKETS);
 
         final double min = -10_000;
         final double interval = 1;
@@ -788,7 +787,7 @@ public class ComboNrSketchTest {
         assertEquals(min, histogram.getMin(), 0);
         assertEquals(max, histogram.getMax(), 0);
 
-        assertEquals(nBuckets * 2, histogram.getMaxNumOfBuckets());
+        assertEquals(TEST_MAX_BUCKETS * 2, histogram.getMaxNumOfBuckets());
 
         verifyPercentile(histogram, new double[]{0}, new double[]{min});
         verifyPercentile(histogram, new double[]{100}, new double[]{max});

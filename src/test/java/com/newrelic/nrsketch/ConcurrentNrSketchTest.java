@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE4_ERROR;
+import static com.newrelic.nrsketch.SimpleNrSketchTest.TEST_MAX_BUCKETS;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.insertData;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
@@ -43,8 +44,8 @@ public class ConcurrentNrSketchTest {
     // Equality is also tested in verifySerialization()
     @Test
     public void testEqualAndHashAndDeepCopy() {
-        final ConcurrentNrSketch s1 = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
-        final ConcurrentNrSketch s2 = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
+        final ConcurrentNrSketch s1 = new ConcurrentNrSketch(sketchMaker.getSketch(TEST_MAX_BUCKETS));
+        final ConcurrentNrSketch s2 = new ConcurrentNrSketch(sketchMaker.getSketch(TEST_MAX_BUCKETS));
         final ConcurrentNrSketch s3 = new ConcurrentNrSketch(sketchMaker.getSketch(99));
 
         assertEquals(s1.deepCopy(), s1);
@@ -81,7 +82,7 @@ public class ConcurrentNrSketchTest {
         final long valuesPerThread = 10000;
         final long expectedCount = valuesPerThread * numThreads;
 
-        final ConcurrentNrSketch sketch = new ConcurrentNrSketch(sketchMaker.getSketch(SimpleNrSketch.DEFAULT_MAX_BUCKETS));
+        final ConcurrentNrSketch sketch = new ConcurrentNrSketch(sketchMaker.getSketch(TEST_MAX_BUCKETS));
 
         verifySerialization(sketch, 77, 11); // Test empty sketch
 

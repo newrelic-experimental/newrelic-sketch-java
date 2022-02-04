@@ -12,8 +12,9 @@ NrSketch publishes artifacts to Maven, in the "com.newrelic" group. To publish a
 * If staging repo content appears good, "close" the repo to make it visible to test apps.
 * Test the staging repo by loading nrSketch from a test app.
 * Once testing passes, "release" the staging repo. This will make the repo visible in the standard Maven space. It 
-  may take 5 to 10 minutes to appear in the Maven space. You can watch 
-  https://repo.maven.apache.org/maven2/com/newrelic/nrsketch/ for the new version to appear.
+  may take 5 to 10 minutes for the new version to appear in the Maven space. You can monitor the new version's 
+  visibility at
+  https://repo.maven.apache.org/maven2/com/newrelic/nrsketch/ 
 * Merge nrSketch version and release doc changes to the main branch on GitHub
 * Create release tag in GitHub
 
@@ -27,9 +28,10 @@ NrSketch publishes artifacts to Maven, in the "com.newrelic" group. To publish a
 
 Note that some versions of GnuPG may default to an encryption algorithm other than
   "rsa" on the "--generate-key" option. If so, use "--full-generate-key" to specify "rsa", because Maven may not
-  support other algorithms. With unsupported algorithm, it may just give a vague "cannot read key" error.
+  support other algorithms. With unsupported algorithm, Maven may just give a vague "cannot read key" error during 
+publish.
 
-To test nrSketch on the staging repo, you may use these rules in the test app build.gradle file to load from the
+To test nrSketch on the staging repo, you may use these rules in the test app's build.gradle file to load from the
 staging space rather than the usual release space.
 ```
 repositories {

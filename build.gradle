@@ -1,5 +1,8 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
+    id 'io.github.gradle-nexus.publish-plugin' version '1.0.0'
+    id 'signing'
     id 'idea'
     id 'me.champeau.gradle.jmh' version '0.5.0'
     id 'com.github.spotbugs' version '4.7.5'
@@ -9,11 +12,91 @@ repositories {
     mavenCentral()
 }
 
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
 dependencies {
     compile "org.jetbrains:annotations:$jetBrainsAnnotationsVersion"
     compile "com.github.spotbugs:spotbugs-annotations:$spotbugsAnnotationsVersion"
 
     testCompile "junit:junit:$junitVersion"
+}
+
+task sourcesJar(type: Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+// For Maven publish
+group = 'com.newrelic'
+version = "$nrSketchVersion"
+
+def repoPath = "//github.com/newrelic-experimental/newrelic-sketch-java"
+def sourceUrl = "https:$repoPath"
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'nrsketch'
+
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+
+            pom {
+                name = 'NrSketch'
+                description = 'A scaled base2 exponential histogram supporting auto-scaling and lossless merge'
+                url = "$sourceUrl"
+
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'newrelic'
+                        name = 'New Relic'
+                        email = 'opensource@newrelic.com'
+                    }
+                }
+
+                scm {
+                    connection = "scm:git:git:${repoPath}.git"
+                    developerConnection = "scm:git:ssh:${repoPath}.git"
+                    url = "$sourceUrl"
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'local'
+            url = layout.buildDirectory.dir("artifactory")
+        }
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            username = System.getenv("SONATYPE_USERNAME")
+            password = System.getenv("SONATYPE_PASSWORD")
+        }
+    }
+}
+
+signing {
+    useInMemoryPgpKeys(System.getenv("GPG_SECRET_KEY"), System.getenv("GPG_PASSWORD"))
+    sign publishing.publications.mavenJava
 }
 
 jmh {

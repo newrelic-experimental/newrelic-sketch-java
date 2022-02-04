@@ -23,7 +23,7 @@ import static com.newrelic.nrsketch.ComboNrSketch.minWithNan;
 // or "totalCount - countForNegatives", in the case of positive numbers.
 
 public class SimpleNrSketch implements NrSketch {
-    public static final int DEFAULT_MAX_BUCKETS = 320; // 2.17% relative error (scale 4) for max/min contrast up to 1M
+    public static final int DEFAULT_MAX_BUCKETS = 160; // 4.3% relative error (scale 3) for max/min contrast up to 1M
     public static final int DEFAULT_INIT_SCALE = ScaledExpIndexer.MAX_SINT32_INDEX_SCALE; // 0.000033% relative error
 
     public static final Function<Integer, ScaledIndexer> DEFAULT_INDEXER_MAKER = IndexerOption.AUTO_SELECT;

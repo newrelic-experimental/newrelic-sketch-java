@@ -20,17 +20,22 @@ import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertLongEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class SimpleNrSketchTest {
+    public static final int TEST_MAX_BUCKETS = 320;
     public static final int TEST_INIT_SCALE = 12; // Initial scale for test cases.
     public static final double DELTA = 1e-14; // Floating point comparison relative delta.
     public static final double ERROR_DELTA = 1.001; // for relative error comparison.
+
+    public static final double SCALE0_ERROR = 1.0 / 3;
+    public static final double SCALE1_ERROR = 0.17157287525380996;
+    public static final double SCALE2_ERROR = 0.08642723372588978;
+    public static final double SCALE3_ERROR = 0.04329461749938920;
     public static final double SCALE4_ERROR = 0.02165746232622625;
 
     @Test
     public void testConstructors() {
-        assertEquals(320, SimpleNrSketch.DEFAULT_MAX_BUCKETS);
+        assertEquals(160, SimpleNrSketch.DEFAULT_MAX_BUCKETS);
         assertEquals(20, SimpleNrSketch.DEFAULT_INIT_SCALE);
         assertEquals(IndexerOption.AUTO_SELECT, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
@@ -225,8 +230,8 @@ public class SimpleNrSketchTest {
     // Equality is also tested in verifySerialization()
     @Test
     public void testEqualAndHash() {
-        final SimpleNrSketch s1 = new SimpleNrSketch();
-        final SimpleNrSketch s2 = new SimpleNrSketch();
+        final SimpleNrSketch s1 = new SimpleNrSketch(TEST_MAX_BUCKETS);
+        final SimpleNrSketch s2 = new SimpleNrSketch(TEST_MAX_BUCKETS);
         final SimpleNrSketch s3 = new SimpleNrSketch(99);
 
         assertNotEquals(s1, s3);
@@ -247,7 +252,7 @@ public class SimpleNrSketchTest {
     // Verify relative error for max/min contrast of 1M, with default number of buckets.
     @Test
     public void testInsert1M() {
-        final int nBuckets = 320;
+        final int nBuckets = 160;
         final SimpleNrSketch histogram = new SimpleNrSketch(); // Using default number of buckets
 
         final double min = 1.0 / (1 << 16);
@@ -260,8 +265,8 @@ public class SimpleNrSketchTest {
             d += interval;
         }
 
-        assertEquals(4, histogram.getScale());
-        verifyRelativeError(histogram, 4, SCALE4_ERROR);
+        assertEquals(3, histogram.getScale());
+        verifyRelativeError(histogram, 3, SCALE3_ERROR);
 
         assertEquals(min, histogram.getMin(), 0);
         assertEquals(min + interval * (n - 1), histogram.getMax(), 0);
@@ -269,7 +274,7 @@ public class SimpleNrSketchTest {
         assertEquals(nBuckets, histogram.getBucketWindowSize());
         assertEquals(nBuckets, histogram.getMaxNumOfBuckets());
 
-        verifySerialization(histogram, 555);
+        verifySerialization(histogram, 331);
     }
 
     @Test

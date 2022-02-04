@@ -23,31 +23,31 @@ Bucket index is an integer that can be positive (bound > 1), 0 (bound = 1), or n
 point number greater than 1. It is further restricted by scale. Scale is an integer that can be positive (base < 2), 0 (
 base = 2), or negative (base > 2). The following table shows bases at selected scales.
 
-| scale | base          | relative error | dataset contrast at 320 buckets |
+| scale | base          | relative error | dataset contrast at 160 buckets |
 | ----- | ------------- | -------------- | ------------------------------- |
-| 20    | 1.000 000 661 | 0.000 033%     | 1.000 212                       |
-| 19    | 1.000 001 322 | 0.000 066%     | 1.000 423                       |
-| 18    | 1.000 002 644 | 0.000 132%     | 1.000 846                       |
-| 17    | 1.000 005 288 | 0.000 264%     | 1.001 694                       |
-| 16    | 1.000 011     | 0.000 529%     | 1.003 390                       |
-| 15    | 1.000 021     | 0.001 058%     | 1.006 792                       |
-| 14    | 1.000 042     | 0.002 115%     | 1.013 630                       |
-| 13    | 1.000 085     | 0.004 231%     | 1.027 446                       |
-| 12    | 1.000 169     | 0.008 461%     | 1.056                           |
-| 11    | 1.000 339     | 0.017%         | 1.114                           |
-| 10    | 1.000 677     | 0.034%         | 1.242                           |
-| 9     | 1.001 355     | 0.068%         | 1.542                           |
-| 8     | 1.002 711     | 0.135%         | 2.378                           |
-| 7     | 1.005 430     | 0.271%         | 5.657                           |
-| 6     | 1.010 889     | 0.542%         | 32                              |
-| 5     | 1.021 897     | 1.083%         | 1,024      (1K)                     |
-| 4     | 1.044 274     | 2.166%         | 1,048,576  (1M)                     |
-| 3     | 1.090 508     | 4.329%         | 1.10E+12   (1T)                     |
-| 2     | 1.189 207     | 8.643%         | 1.21E+24                        |
-| 1     | 1.414 214     | 17.157%        | 1.46E+48                        |
-| 0     | 2.000 000     | 33.333%        | 2.14E+96                        |
-| -1   | 4.000 000     | 60.000%        | 4.56E+192                       |
-| -2   | 16.000 000    | 88.235%        | 2.08E+385                       |
+| 20    | 1.000 000 661 | 0.000 033%     | 1.000 106                       |
+| 19    | 1.000 001 322 | 0.000 066%     | 1.000 212                       |
+| 18    | 1.000 002 644 | 0.000 132%     | 1.000 423                       |
+| 17    | 1.000 005 288 | 0.000 264%     | 1.000 846                       |
+| 16    | 1.000 011     | 0.000 529%     | 1.001 694                       |
+| 15    | 1.000 021     | 0.001 058%     | 1.003 390                       |
+| 14    | 1.000 042     | 0.002 115%     | 1.006 792                       |
+| 13    | 1.000 085     | 0.004 231%     | 1.013 630                       |
+| 12    | 1.000 169     | 0.008 461%     | 1.027 446                       |
+| 11    | 1.000 339     | 0.017%         | 1.055 645                       |
+| 10    | 1.000 677     | 0.034%         | 1.114                         |
+| 9     | 1.001 355     | 0.068%         | 1.241                         |
+| 8     | 1.002 711     | 0.135%         | 1.542                         |
+| 7     | 1.005 430     | 0.271%         | 2.378                         |
+| 6     | 1.010 889     | 0.542%         | 5.656                         |
+| 5     | 1.021 897     | 1.083%         | 32                              |
+| 4     | 1.044 274     | 2.166%         | 1,024 (1K)                          |
+| 3     | 1.090 508     | 4.329%         | 1,048,576 (1M)                      |
+| 2     | 1.189 207     | 8.643%         | 1.10E+12 (1T)                       |
+| 1     | 1.414 214     | 17.157%        | 1.21E+24                        |
+| 0     | 2.000 000     | 33.333%        | 1.46E+48                        |
+| \-1   | 4.000 000     | 60.000%        | 2.14E+96                        |
+| \-2   | 16.000 000    | 88.235%        | 4.56E+192                       |
 
 "Relative error" here is the relative error of percentile or quantile calculated from the histogram. Relative error is
 defined as "Math.abs(reportedValue - actualValue) / reportedValue". To minimize error, percentile calculation returns
@@ -80,10 +80,10 @@ features:
 * Serialization and deserialization code included
 * Full "double" range, including subnormal numbers are supported, at all meaningful scales (-11 to 52, inclusive).
 
-With a reasonable default number of buckets of 320, a histogram can fit a dataset with contrast (maxValue / minValue) up
-to 1M at scale 4, for a 2.17% relative error. Here contrast = 2 ^ (numBuckets / 2^scale). The memory cost of 320 buckets
+With the default maximal number of buckets at 160, a histogram can fit a dataset with contrast (maxValue / minValue) up
+to 1M at scale 3, for a 4.3% relative error. Here contrast = 2 ^ (numBuckets / 2^scale). The memory cost of 160 buckets
 is modest. Because NrSketch uses variable size counters, and most use cases need no more than 4 bytes per bucket count,
-the in memory footprint of an NrSketch is typically less than 320 * 4 = 1280 bytes. The included serializer
+the in memory footprint of an NrSketch is typically less than 160 * 4 = 540 bytes. The included serializer
 uses [varint](https://en.wikipedia.org/wiki/Variable-length_quantity) to encode the counters, which is even more space
 efficient. Serialized size is often just a few hundred bytes. At this level of cost, many use cases will not need to
 override the default max number of buckets. The default no argument constructor will often just work.
@@ -94,7 +94,7 @@ can go all the way to scale 52 and 64 bit index. The relatively high initial sca
 works from very low contrast to very high contrast dataset. Typically within the first a few values in the dataset,
 nrSketch can quickly downscale to fit the dataset. Because nrSketch can downscale multiple scales at once, the cost to
 fit high contrast is small. For example, if the first value is 1, the second value is 5, nrSketch can downscale directly
-from the initial scale of 20 to scale 7, where the max dataset contrast is 5.6 at the default 320 buckets. In most
+from the initial scale of 20 to scale 6, where the max dataset contrast is 5.6 at the default 160 buckets. In most
 cases, you will not need to override the default initial scale.
 
 Note that contrast is ratio of maxValue / minNonZeroValue in a dataset. It is not the absolute value of max value. For
@@ -127,7 +127,7 @@ NrSketch provides the following interfaces and classes:
 
 * **NrSketchSerializer**: This class serializes a sketch to a ByteBuffer, or deserializes a sketch from a ByteBuffer.
   The bucket counters are written as [varint](https://en.wikipedia.org/wiki/Variable-length_quantity) to save space. At
-  the default max 320 buckets, typical serialized object size is less than 1KB.
+  the default max 160 buckets, typical serialized object size is less than 500 bytes.
 
 For your convenience, Jmh benchmark is included in this project to measure cpu cost (see jmhInsert.sh). To give you some
 rough idea on the relative cpu cost of the different classes, below are some numbers. As always, benchmark numbers

@@ -192,6 +192,17 @@ Unit tests are included. See src/test
 
 For benchmarking, see jmhIndexer.sh, jmhInserrt.sh and src/jmh.
 
+## Publishing Artifacts
+
+NrSketch publishes artifacts to Maven, in the "com.newrelic" group. To use nrSketch from Maven, you may include such 
+lines in a gradle file:
+```
+dependencies {
+    implementation "com.newrelic:nrsketch:1.1"
+```
+
+To publish a new version of NrSketch, see [Publish.md](Publish.md)
+
 ## Support
 
 NrSketch is experimental right now. No support yet.

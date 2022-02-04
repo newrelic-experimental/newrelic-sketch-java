@@ -2,6 +2,21 @@
 
 # New Relic Sketch
 
+**Table of Contents**
+
+* [New Relic Sketch](#new-relic-sketch)
+  * [Introduction](#introduction)
+  * [NrSketch API](#nrsketch-api)
+  * [Internal classes](#internal-classes)
+    * [Bucket Indexer](#bucket-indexer)
+    * [WindowedCounterArray](#windowedcounterarray)
+    * [MultiTypeCounterArray](#multitypecounterarray)
+  * [Build and testing](#build-and-testing)
+  * [Publishing Artifacts](#publishing-artifacts)
+  * [Support](#support)
+  * [Contributing](#contributing)
+  * [License](#license)
+  
 ## Introduction
 
 New Relic Sketch (aka NrSketch)  is a scaled base2 exponential histogram. It is adapted from the histogram code used at
@@ -194,18 +209,19 @@ For benchmarking, see jmhIndexer.sh, jmhInserrt.sh and src/jmh.
 
 ## Publishing Artifacts
 
-NrSketch publishes artifacts to Maven, in the "com.newrelic" group. To use nrSketch from Maven, you may include such 
-lines in a gradle file:
+NrSketch publishes artifacts to Maven, in the "com.newrelic" group, with artifact id "nrsketch". To use nrSketch from 
+Maven, you may include such lines in a gradle file:
+
 ```
 dependencies {
     implementation "com.newrelic:nrsketch:1.1"
 ```
 
-To publish a new version of NrSketch, see [Publish.md](Publish.md)
+For version history, see [RELEASES.md](RELEASES.md). To publish a new version of NrSketch, see [Publish.md](Publish.md)
 
 ## Support
 
-NrSketch is experimental right now. No support yet.
+You may file [issues](https://github.com/newrelic-experimental/newrelic-sketch-java/issues) on GitHub. 
 
 ## Contributing
 

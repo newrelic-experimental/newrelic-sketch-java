@@ -7,6 +7,10 @@ NrSketch publishes artifacts to Maven, in the "com.newrelic" group. To publish a
 * Run "./gradlew publish", which publishes to a Maven staging repo, because the "com.newrelic" group is configured
   to go to staging first. See
   [staging process](https://help.sonatype.com/repomanager2/staging-releases/staging-overview) for more info.
+  * The publish task must run with certain environment variables set. See next section for more info.
+  * The publish task also creates a local copy in the "build/artifactory" directory. To publish to local directory 
+    only, run "./gradlew publishMavenJavaPublicationToLocalRepository". The Sonatype environment variables are not 
+    needed for local publish. The GPG (GnuPG) signing environment variables are still required.
 * Log onto [Sonatype repository manager](https://oss.sonatype.org/index.html#stagingRepositories) using your
   Sonatype id. Then verify content of the staging repo.
 * If staging repo content appears good, "close" the repo to make it visible to test apps.
@@ -19,10 +23,11 @@ NrSketch publishes artifacts to Maven, in the "com.newrelic" group. To publish a
 * Create release tag in GitHub
 
 "./gradlew publish" is wired to publish to Maven. You must set the following environment variables before running it:
-* `SONATYPE_USERNAME` and `SONATYPE_PASSWORD`. The Sonatype user id must have upload permission to the "com.
-  newrelic" group. A user id may be created at [Sonatype](https://issues.sonatype.org/secure/Dashboard.jspa). Then
+* `SONATYPE_USERNAME` and `SONATYPE_PASSWORD`. These are used to access Maven repo. The Sonatype user id must have 
+  upload permission to the "com.newrelic" group. A user id may be created at
+  [Sonatype](https://issues.sonatype.org/secure/Dashboard.jspa). Then
   you may request access by making a comment on this [ticket](https://issues.sonatype.org/browse/OSSRH-4818).
-* `GPG_SECRET_KEY` and `GPG_PASSWORD`. The key may be created via this
+* `GPG_SECRET_KEY` and `GPG_PASSWORD`. These are used to sign the artifacts. The key may be created via this
   [process](https://central.sonatype.org/publish/requirements/gpg/). Load the output of `gpg -armor
   --export-secret-keys <keyId>` into `GPG_SECRET_KEY` as a multi-line value.
 

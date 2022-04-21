@@ -57,7 +57,7 @@ select the best indexer based on scale. It is the default option for NrSketch. T
 * Scale <= 0: ExponentIndexer. Fastest mapping, no extra memory.
 
 At the default initial scale of 20, AUTO_SELECT starts with SubBucketLogIndexer. At the default 160 buckets, most
-datasets will quickly downscale to scale 6 (when contrast exceeds 5.66) and start using the more efficient
+datasets will quickly downscale to scale 6 (when contrast exceeds 2.378) and start using the more efficient
 SubBucketLookupIndexer.
 
 Note that the LogIndexer class is not used by AUTO_SELECT at all. It was written mostly as a reference to test other

@@ -10,9 +10,11 @@ import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import static com.newrelic.nrsketch.SimpleNrSketch.DEFAULT_INIT_SCALE;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.EMPTY_BUCKET_LIST;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.INITIAL_ERROR;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.SCALE0_ERROR;
@@ -25,6 +27,7 @@ import static com.newrelic.nrsketch.SimpleNrSketchTest.insertData;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyHistogram;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifyPercentile;
 import static com.newrelic.nrsketch.SimpleNrSketchTest.verifySerialization;
+import static com.newrelic.nrsketch.indexer.IndexerOption.AUTO_SELECT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
@@ -33,10 +36,10 @@ public class ComboNrSketchTest {
     @Test
     public void testConstructors() {
         ComboNrSketch sketch = new ComboNrSketch();
-        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new ComboNrSketch(99);
-        assertParams(sketch, 99, SimpleNrSketch.DEFAULT_INIT_SCALE, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+        assertParams(sketch, 99, DEFAULT_INIT_SCALE, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new ComboNrSketch(99, 43);
         assertParams(sketch, 99, 43, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
@@ -768,6 +771,43 @@ public class ComboNrSketchTest {
                 new Bucket(128.0, 256.0, 128), // bucket 7
                 new Bucket(256.0, 299.0, 44), // bucket 8
         });
+    }
+
+    @Test
+    public void testHistogramIsCompactedWhenEmpty() {
+        final NrSketch emptyHistogram = new ComboNrSketch(10);
+
+        final NrSketch histogramBoth = new ComboNrSketch(10);
+        insertData(histogramBoth, 0, 1024, 4096);
+        insertData(histogramBoth, -1024, 0, 4096);
+
+        final NrSketch histogramPositiveOnly = new ComboNrSketch(10);
+        insertData(histogramPositiveOnly, 0, 1024, 4096);
+
+        final NrSketch histogramNegativeOnly = new ComboNrSketch(10);
+        insertData(histogramNegativeOnly, -1024, 0, 4096);
+
+        assertEquals(
+                histogramBoth.deepCopy().subtract(histogramNegativeOnly),
+                histogramPositiveOnly
+        );
+        assertEquals(
+                histogramBoth.deepCopy().subtract(histogramPositiveOnly),
+                histogramNegativeOnly
+        );
+        assertEquals(
+                histogramBoth.deepCopy().subtract(histogramBoth),
+                emptyHistogram
+        );
+        // Ensure that we can still insert and interact with the compacted histogram and subtract/merge are inverse operations
+        assertEquals(
+                histogramBoth.deepCopy().subtract(histogramNegativeOnly).merge(histogramNegativeOnly),
+                histogramBoth
+        );
+        assertEquals(
+                histogramBoth.deepCopy().subtract(histogramPositiveOnly).merge(histogramPositiveOnly),
+                histogramBoth
+        );
     }
 
     @Test

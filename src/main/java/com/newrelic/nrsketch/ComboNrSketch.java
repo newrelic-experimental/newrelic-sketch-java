@@ -170,6 +170,19 @@ public class ComboNrSketch implements NrSketch {
         if (other.positiveHistogram != null) {
             getOrCreatePositveHistogram().subtract(other.positiveHistogram);
         }
+
+        return compact();
+    }
+
+    private NrSketch compact() {
+        if (negativeHistogram != null && negativeHistogram.getCount() == 0) {
+            negativeHistogram = null;
+            histograms.remove(0);
+        }
+        if (positiveHistogram != null && positiveHistogram.getCount() == 0) {
+            positiveHistogram = null;
+            histograms.remove(histograms.size() - 1);
+        }
         return this;
     }
 

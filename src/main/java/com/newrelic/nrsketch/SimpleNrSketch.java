@@ -61,6 +61,9 @@ public class SimpleNrSketch implements NrSketch {
                           final int initialScale,
                           final boolean bucketHoldsPositiveNumbers,
                           final Function<Integer, ScaledIndexer> indexerMaker) {
+        if (maxNumBuckets <= 0) {
+            throw new IllegalArgumentException("maxNumBuckets " + maxNumBuckets + " must be greater than 0");
+        }
         buckets = new WindowedCounterArray(maxNumBuckets);
         this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
         this.indexerMaker = indexerMaker;

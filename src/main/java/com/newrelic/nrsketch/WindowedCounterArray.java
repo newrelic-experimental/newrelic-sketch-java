@@ -21,6 +21,9 @@ public class WindowedCounterArray {
     }
 
     public WindowedCounterArray(final int maxSize, final byte bytesPerCounter) {
+        if (maxSize <= 0) {
+            throw new IllegalArgumentException("maxSize " + maxSize + " must be greater than 0");
+        }
         backingArray = new MultiTypeCounterArray(maxSize, bytesPerCounter);
         this.maxSize = maxSize;
         indexBase = NULL_INDEX;

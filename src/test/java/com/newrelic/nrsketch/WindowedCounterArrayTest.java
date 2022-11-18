@@ -14,6 +14,11 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class WindowedCounterArrayTest {
+    @Test(expected = IllegalArgumentException.class)
+    public void testInitializedWithZeroMaxBucketCount() {
+        new WindowedCounterArray(0);
+    }
+
     @Test
     public void happyPath() {
         final WindowedCounterArray array = new WindowedCounterArray(10);

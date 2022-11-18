@@ -33,6 +33,11 @@ public class SimpleNrSketchTest {
     public static final double SCALE3_ERROR = 0.04329461749938920;
     public static final double SCALE4_ERROR = 0.02165746232622625;
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testInitializedWithZeroMaxBucketCount() {
+        new SimpleNrSketch(0);
+    }
+
     @Test
     public void testConstructors() {
         assertEquals(160, SimpleNrSketch.DEFAULT_MAX_BUCKETS);

@@ -46,6 +46,9 @@ public class ComboNrSketch implements NrSketch {
     public ComboNrSketch(final int maxNumBucketsPerHistogram,
                          final int initialScale,
                          final Function<Integer, ScaledIndexer> indexerMaker) {
+        if (maxNumBucketsPerHistogram <= 0) {
+            throw new IllegalArgumentException("maxNumBucketsPerHistogram " + maxNumBucketsPerHistogram + " must be greater than 0");
+        }
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
         this.indexerMaker = indexerMaker;

@@ -33,6 +33,11 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ComboNrSketchTest {
+    @Test(expected = IllegalArgumentException.class)
+    public void testInitializedWithZeroMaxBucketCount() {
+        new ComboNrSketch(0);
+    }
+
     @Test
     public void testConstructors() {
         ComboNrSketch sketch = new ComboNrSketch();

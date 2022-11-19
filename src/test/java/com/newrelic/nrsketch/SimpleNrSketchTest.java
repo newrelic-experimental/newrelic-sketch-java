@@ -8,21 +8,20 @@ import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.DoubleFormat;
 import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.ScaledIndexer;
-import org.hamcrest.BaseMatcher;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.function.Function;
 import java.util.stream.LongStream;
-import java.util.stream.Stream;
 
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
-import static com.newrelic.nrsketch.SimpleNrSketch.DEFAULT_INIT_SCALE;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertDoubleEquals;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertLongEquals;
-import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class SimpleNrSketchTest {
     public static final int TEST_MAX_BUCKETS = 320;
@@ -44,14 +43,14 @@ public class SimpleNrSketchTest {
     @Test
     public void testConstructors() {
         assertEquals(160, SimpleNrSketch.DEFAULT_MAX_BUCKETS);
-        assertEquals(20, DEFAULT_INIT_SCALE);
+        assertEquals(20, SimpleNrSketch.DEFAULT_INIT_SCALE);
         assertEquals(IndexerOption.AUTO_SELECT, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         SimpleNrSketch sketch = new SimpleNrSketch();
-        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new SimpleNrSketch(99);
-        assertParams(sketch, 99, DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+        assertParams(sketch, 99, SimpleNrSketch.DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new SimpleNrSketch(99, 43);
         assertParams(sketch, 99, 43, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
@@ -1349,7 +1348,7 @@ public class SimpleNrSketchTest {
 
         // Negative
 
-        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, DEFAULT_INIT_SCALE);
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, SimpleNrSketch.DEFAULT_INIT_SCALE);
         insertData(negativeHistogram, -1024, 0, 4096);
         final NrSketch cumulativeWithNegativeHistogram = negativeHistogram.deepCopy();
         insertData(cumulativeWithNegativeHistogram, -512, 0, 512);
@@ -1392,7 +1391,7 @@ public class SimpleNrSketchTest {
 
         // Negative
 
-        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, DEFAULT_INIT_SCALE);
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, SimpleNrSketch.DEFAULT_INIT_SCALE);
         insertData(negativeHistogram, -1024, 0, 4096);
         final NrSketch cumulativeWithNegativeHistogram = negativeHistogram.deepCopy();
         insertData(cumulativeWithNegativeHistogram, -1024, -512, 512);
@@ -1426,9 +1425,9 @@ public class SimpleNrSketchTest {
 
         // Negative
 
-        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(10, DEFAULT_INIT_SCALE);
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(10, SimpleNrSketch.DEFAULT_INIT_SCALE);
         negativeHistogram.insert(-1);
-        final NrSketch negativeHistogram2 = SimpleNrSketch.newNegativeHistogram(10, DEFAULT_INIT_SCALE);
+        final NrSketch negativeHistogram2 = SimpleNrSketch.newNegativeHistogram(10, SimpleNrSketch.DEFAULT_INIT_SCALE);
 
         assertEquals(
                 "SimpleNrSketch subtraction: Cannot borrow from another bucket to compensate for a negative bucket count.",
@@ -1455,7 +1454,7 @@ public class SimpleNrSketchTest {
 
         // Negative
 
-        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, DEFAULT_INIT_SCALE);
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, SimpleNrSketch.DEFAULT_INIT_SCALE);
         insertData(negativeHistogram, -1024, 0, 4096);
         final NrSketch cumulativeWithNegativeHistogram = negativeHistogram.deepCopy();
         insertData(cumulativeWithNegativeHistogram, -512, 0, 512);

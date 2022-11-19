@@ -24,7 +24,19 @@ public interface NrSketch extends Iterable<NrSketch.Bucket> {
     // While merge() implements addition, subtract() implements subtraction.
     // Subtraction is useful to produce a delta histogram from accumulative histograms.
     // This function subtracts "other" from "this". Always returns "this".
-    // An implementation should not modify "other".
+    //
+    // Implementations should not modify "other".
+    //
+    // In cases where the source data was not recorded directly into an NrSketch instance,
+    // there will likely be some kind of translation logic involving floating point error
+    // when interpolating source buckets into NrSketch buckets that needs to be accounted for.
+    // That accounting may end up with valid cumulative source data getting translated into
+    // NrSketch buckets where some buckets appear to decrease by one. This happens because the
+    // place where the extra bucket count lands during translation may end up in a different
+    // bucket in a subsequent translation.
+    //
+    // Implementations should allow for this, and "borrow" the count from a neighboring bucket
+    // to keep the totalCount == sum(bucketCounts).
     NrSketch subtract(final NrSketch other);
 
     // Returns a deep copy of the sketch.

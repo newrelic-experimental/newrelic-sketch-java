@@ -8,18 +8,21 @@ import com.newrelic.nrsketch.NrSketch.Bucket;
 import com.newrelic.nrsketch.indexer.DoubleFormat;
 import com.newrelic.nrsketch.indexer.IndexerOption;
 import com.newrelic.nrsketch.indexer.ScaledIndexer;
+import org.hamcrest.BaseMatcher;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.function.Function;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static com.newrelic.nrsketch.ComboNrSketch.maxWithNan;
+import static com.newrelic.nrsketch.SimpleNrSketch.DEFAULT_INIT_SCALE;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertDoubleEquals;
 import static com.newrelic.nrsketch.indexer.BucketIndexerTest.assertLongEquals;
+import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 
 public class SimpleNrSketchTest {
     public static final int TEST_MAX_BUCKETS = 320;
@@ -41,14 +44,14 @@ public class SimpleNrSketchTest {
     @Test
     public void testConstructors() {
         assertEquals(160, SimpleNrSketch.DEFAULT_MAX_BUCKETS);
-        assertEquals(20, SimpleNrSketch.DEFAULT_INIT_SCALE);
+        assertEquals(20, DEFAULT_INIT_SCALE);
         assertEquals(IndexerOption.AUTO_SELECT, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         SimpleNrSketch sketch = new SimpleNrSketch();
-        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, SimpleNrSketch.DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+        assertParams(sketch, SimpleNrSketch.DEFAULT_MAX_BUCKETS, DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new SimpleNrSketch(99);
-        assertParams(sketch, 99, SimpleNrSketch.DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
+        assertParams(sketch, 99, DEFAULT_INIT_SCALE, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
 
         sketch = new SimpleNrSketch(99, 43);
         assertParams(sketch, 99, 43, true, SimpleNrSketch.DEFAULT_INDEXER_MAKER);
@@ -1320,6 +1323,150 @@ public class SimpleNrSketchTest {
                 new Bucket(10.0, 100.0, 2), // bucket 1
         });
         verifySerialization(histogram, 75);
+    }
+
+    @Test
+    public void allowForOffByOneErrorsInSubtractionBorrowFromLesserIndex() {
+        // Positive
+
+        final NrSketch positiveHistogram = new SimpleNrSketch(100);
+        insertData(positiveHistogram, 0, 1024, 4096);
+        final NrSketch cumulativeWithPositiveHistogram = positiveHistogram.deepCopy();
+        insertData(cumulativeWithPositiveHistogram, 0, 512, 512);
+
+        // simulate OTLP -> SimpleNrSketch translation error where some amount of count shuffling can occur due to linear interpolation
+        cumulativeWithPositiveHistogram.insert(1000, -1);
+
+        final NrSketch difference = cumulativeWithPositiveHistogram.deepCopy().subtract(positiveHistogram);
+        // Total count difference is still the expected value, and the negative count is taken from another bucket
+        assertEquals(cumulativeWithPositiveHistogram.getCount() - positiveHistogram.getCount(), difference.getCount());
+        final LongStream.Builder countStream = LongStream.builder();
+        difference.forEach(b -> {
+            assertTrue(b.count >= 0);
+            countStream.add(b.count);
+        });
+        assertEquals(difference.getCount(), countStream.build().sum());
+
+        // Negative
+
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, DEFAULT_INIT_SCALE);
+        insertData(negativeHistogram, -1024, 0, 4096);
+        final NrSketch cumulativeWithNegativeHistogram = negativeHistogram.deepCopy();
+        insertData(cumulativeWithNegativeHistogram, -512, 0, 512);
+
+        // simulate OTLP -> SimpleNrSketch translation error where some amount of count shuffling can occur due to linear interpolation
+        cumulativeWithNegativeHistogram.insert(-1000, -1);
+
+        final NrSketch negativeDifference = cumulativeWithPositiveHistogram.deepCopy().subtract(positiveHistogram);
+        // Total count difference is still the expected value, and the negative count is taken from another bucket
+        assertEquals(cumulativeWithPositiveHistogram.getCount() - positiveHistogram.getCount(), negativeDifference.getCount());
+        final LongStream.Builder negativeCountStream = LongStream.builder();
+        negativeDifference.forEach(b -> {
+            assertTrue(b.count >= 0);
+            negativeCountStream.add(b.count);
+        });
+        assertEquals(negativeDifference.getCount(), negativeCountStream.build().sum());
+    }
+
+    @Test
+    public void allowForOffByOneErrorsInSubtractionBorrowFromGreaterIndex() {
+        // Positive
+
+        final NrSketch positiveHistogram = new SimpleNrSketch(100);
+        insertData(positiveHistogram, 0, 1024, 4096);
+        final NrSketch cumulativeWithPositiveHistogram = positiveHistogram.deepCopy();
+        insertData(cumulativeWithPositiveHistogram, 512, 1024, 512);
+
+        // simulate OTLP -> SimpleNrSketch translation error where some amount of count shuffling can occur due to linear interpolation
+        cumulativeWithPositiveHistogram.insert(1, -1);
+
+        final NrSketch difference = cumulativeWithPositiveHistogram.deepCopy().subtract(positiveHistogram);
+        // Total count difference is still the expected value, and the negative count is taken from another bucket
+        assertEquals(cumulativeWithPositiveHistogram.getCount() - positiveHistogram.getCount(), difference.getCount());
+        final LongStream.Builder countStream = LongStream.builder();
+        difference.forEach(b -> {
+            assertTrue(b.count >= 0);
+            countStream.add(b.count);
+        });
+        assertEquals(difference.getCount(), countStream.build().sum());
+
+        // Negative
+
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, DEFAULT_INIT_SCALE);
+        insertData(negativeHistogram, -1024, 0, 4096);
+        final NrSketch cumulativeWithNegativeHistogram = negativeHistogram.deepCopy();
+        insertData(cumulativeWithNegativeHistogram, -1024, -512, 512);
+
+        // simulate OTLP -> SimpleNrSketch translation error where some amount of count shuffling can occur due to linear interpolation
+        cumulativeWithNegativeHistogram.insert(-1, -1);
+
+        final NrSketch negativeDifference = cumulativeWithPositiveHistogram.deepCopy().subtract(positiveHistogram);
+        // Total count difference is still the expected value, and the negative count is taken from another bucket
+        assertEquals(cumulativeWithPositiveHistogram.getCount() - positiveHistogram.getCount(), negativeDifference.getCount());
+        final LongStream.Builder negativeCountStream = LongStream.builder();
+        negativeDifference.forEach(b -> {
+            assertTrue(b.count >= 0);
+            negativeCountStream.add(b.count);
+        });
+        assertEquals(negativeDifference.getCount(), negativeCountStream.build().sum());
+    }
+
+    @Test
+    public void noBucketToBorrowFrom() {
+        // Positive
+
+        final NrSketch positiveHistogram = new SimpleNrSketch(10);
+        positiveHistogram.insert(1);
+        final NrSketch positiveHistogram2 = new SimpleNrSketch(10);
+
+        assertEquals(
+                "SimpleNrSketch subtraction: Cannot borrow from another bucket to compensate for a negative bucket count.",
+                assertThrows(IllegalArgumentException.class, () -> positiveHistogram2.subtract(positiveHistogram)).getMessage()
+        );
+
+        // Negative
+
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(10, DEFAULT_INIT_SCALE);
+        negativeHistogram.insert(-1);
+        final NrSketch negativeHistogram2 = SimpleNrSketch.newNegativeHistogram(10, DEFAULT_INIT_SCALE);
+
+        assertEquals(
+                "SimpleNrSketch subtraction: Cannot borrow from another bucket to compensate for a negative bucket count.",
+                assertThrows(IllegalArgumentException.class, () -> negativeHistogram2.subtract(negativeHistogram)).getMessage()
+        );
+    }
+
+    @Test
+    public void disallowMoreThanOffByOneErrorsInSubtraction() {
+        // Positive
+
+        final NrSketch positiveHistogram = new SimpleNrSketch(100);
+        insertData(positiveHistogram, 0, 1024, 4096);
+        final NrSketch cumulativeWithPositiveHistogram = positiveHistogram.deepCopy();
+        insertData(cumulativeWithPositiveHistogram, 0, 512, 512);
+
+        // if the difference in value is more than 1, then this is likely an improper cumulative subtraction
+        cumulativeWithPositiveHistogram.insert(1000, -2);
+
+        assertEquals(
+                "SimpleNrSketch subtraction: negative bucket count of -2 not expected. Count must be >= -1",
+                assertThrows(IllegalArgumentException.class, () -> cumulativeWithPositiveHistogram.subtract(positiveHistogram)).getMessage()
+        );
+
+        // Negative
+
+        final NrSketch negativeHistogram = SimpleNrSketch.newNegativeHistogram(100, DEFAULT_INIT_SCALE);
+        insertData(negativeHistogram, -1024, 0, 4096);
+        final NrSketch cumulativeWithNegativeHistogram = negativeHistogram.deepCopy();
+        insertData(cumulativeWithNegativeHistogram, -512, 0, 512);
+
+        // simulate OTLP -> SimpleNrSketch translation error where some amount of count shuffling can occur due to linear interpolation
+        cumulativeWithNegativeHistogram.insert(-1000, -2);
+
+        assertEquals(
+                "SimpleNrSketch subtraction: negative bucket count of -2 not expected. Count must be >= -1",
+                assertThrows(IllegalArgumentException.class, () -> cumulativeWithNegativeHistogram.subtract(negativeHistogram)).getMessage()
+        );
     }
 
     private static SimpleNrSketch testNegativeHistogram(final int numBuckets, final double from, final double to, final int numDataPoints, final Bucket[] expectedBuckets) {

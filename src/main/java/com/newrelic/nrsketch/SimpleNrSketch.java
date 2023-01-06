@@ -10,7 +10,9 @@ import com.newrelic.nrsketch.indexer.ScaledIndexer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 
@@ -61,6 +63,9 @@ public class SimpleNrSketch implements NrSketch {
                           final int initialScale,
                           final boolean bucketHoldsPositiveNumbers,
                           final Function<Integer, ScaledIndexer> indexerMaker) {
+        if (maxNumBuckets <= 0) {
+            throw new IllegalArgumentException("maxNumBuckets " + maxNumBuckets + " must be greater than 0");
+        }
         buckets = new WindowedCounterArray(maxNumBuckets);
         this.bucketHoldsPositiveNumbers = bucketHoldsPositiveNumbers;
         this.indexerMaker = indexerMaker;
@@ -429,6 +434,7 @@ public class SimpleNrSketch implements NrSketch {
                 throw new IllegalArgumentException("SimpleNrSketch subtraction: merged scale must be equal or lower than a component");
             }
 
+            final List<Long> negativeCountIndices = new ArrayList<>();
             final int deltaB = b.getScale() - a.getScale();
 
             // Now subtract b buckets from a.
@@ -437,10 +443,21 @@ public class SimpleNrSketch implements NrSketch {
                 if (!a.buckets.increment(indexA, -b.buckets.get(indexB))) {
                     throw new RuntimeException("subtract(): failed to increment bucket");
                 }
-                if (a.buckets.get(indexA) < 0) {
-                    throw new IllegalArgumentException("SimpleNrSketch subtraction: negative bucket count not expected");
+                final long newCount = a.buckets.get(indexA);
+                if (newCount < -1) {
+                    throw new IllegalArgumentException("SimpleNrSketch subtraction: negative bucket count of " + newCount + " not expected. Count must be >= -1");
+                } else if (newCount == -1) {
+                    // When converting a histogram from one format to another, linear interpolation is often used to
+                    // split a bucket. The split produces non integer counts that need to be rounded to integers. When
+                    // doing subtraction in the native format of two histograms, we don't expect negative count in the
+                    // resulting buckets. But if we convert the input histograms, then do subtraction on the converted
+                    // histograms, some buckets can get -1 count, due to "rounding error" in the conversion. We will do
+                    // a round of correction to eliminate such negative count without changing the total count in the result.
+                    negativeCountIndices.add(indexA);
                 }
             }
+
+            balanceNegativeCounts(a, negativeCountIndices);
 
             a.shrinkBuckets();
         }
@@ -470,6 +487,35 @@ public class SimpleNrSketch implements NrSketch {
         a.sum -= b.sum;
 
         return a;
+    }
+
+    private static void balanceNegativeCounts(final SimpleNrSketch a, final List<Long> negativeCountIndices) {
+        negativeCountIndices.forEach(index -> {
+            a.buckets.increment(index, 1); // set negative bucket count to zero
+            a.buckets.increment(findNonEmptyBucketIndex(a, index), -1); // take that count from nearby bucket
+        });
+    }
+
+    private static long findNonEmptyBucketIndex(final SimpleNrSketch a, final long negativeCountIndex) {
+        long index = negativeCountIndex;
+        while (--index >= a.buckets.getIndexStart() && a.buckets.get(index) <= 0) {
+            // find the index of the first positive bucket count less than negativeCountIndex
+        }
+
+        if (index >= a.buckets.getIndexStart()) {
+            return index;
+        }
+
+        index = negativeCountIndex;
+        while (++index <= a.buckets.getIndexEnd() && a.buckets.get(index) <= 0) {
+            // find the index of the first positive bucket count greater than negativeCountIndex
+        }
+
+        if (index <= a.buckets.getIndexEnd()) {
+            return index;
+        }
+
+        throw new IllegalArgumentException("SimpleNrSketch subtraction: Cannot borrow from another bucket to compensate for a negative bucket count.");
     }
 
     // Shrink buckets start and end index to exclude zero count buckets.

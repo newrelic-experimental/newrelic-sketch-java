@@ -46,6 +46,9 @@ public class ComboNrSketch implements NrSketch {
     public ComboNrSketch(final int maxNumBucketsPerHistogram,
                          final int initialScale,
                          final Function<Integer, ScaledIndexer> indexerMaker) {
+        if (maxNumBucketsPerHistogram <= 0) {
+            throw new IllegalArgumentException("maxNumBucketsPerHistogram " + maxNumBucketsPerHistogram + " must be greater than 0");
+        }
         this.maxNumBucketsPerHistogram = maxNumBucketsPerHistogram;
         this.initialScale = initialScale;
         this.indexerMaker = indexerMaker;
@@ -169,6 +172,19 @@ public class ComboNrSketch implements NrSketch {
 
         if (other.positiveHistogram != null) {
             getOrCreatePositveHistogram().subtract(other.positiveHistogram);
+        }
+
+        return compact();
+    }
+
+    private NrSketch compact() {
+        if (negativeHistogram != null && negativeHistogram.getCount() == 0) {
+            negativeHistogram = null;
+            histograms.remove(0);
+        }
+        if (positiveHistogram != null && positiveHistogram.getCount() == 0) {
+            positiveHistogram = null;
+            histograms.remove(histograms.size() - 1);
         }
         return this;
     }

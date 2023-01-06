@@ -1356,9 +1356,9 @@ public class SimpleNrSketchTest {
         // simulate OTLP -> SimpleNrSketch translation error where some amount of count shuffling can occur due to linear interpolation
         cumulativeWithNegativeHistogram.insert(-1000, -1);
 
-        final NrSketch negativeDifference = cumulativeWithPositiveHistogram.deepCopy().subtract(positiveHistogram);
+        final NrSketch negativeDifference = cumulativeWithNegativeHistogram.deepCopy().subtract(negativeHistogram);
         // Total count difference is still the expected value, and the negative count is taken from another bucket
-        assertEquals(cumulativeWithPositiveHistogram.getCount() - positiveHistogram.getCount(), negativeDifference.getCount());
+        assertEquals(cumulativeWithNegativeHistogram.getCount() - negativeHistogram.getCount(), negativeDifference.getCount());
         final LongStream.Builder negativeCountStream = LongStream.builder();
         negativeDifference.forEach(b -> {
             assertTrue(b.count >= 0);
@@ -1399,9 +1399,9 @@ public class SimpleNrSketchTest {
         // simulate OTLP -> SimpleNrSketch translation error where some amount of count shuffling can occur due to linear interpolation
         cumulativeWithNegativeHistogram.insert(-1, -1);
 
-        final NrSketch negativeDifference = cumulativeWithPositiveHistogram.deepCopy().subtract(positiveHistogram);
+        final NrSketch negativeDifference = cumulativeWithNegativeHistogram.deepCopy().subtract(negativeHistogram);
         // Total count difference is still the expected value, and the negative count is taken from another bucket
-        assertEquals(cumulativeWithPositiveHistogram.getCount() - positiveHistogram.getCount(), negativeDifference.getCount());
+        assertEquals(cumulativeWithNegativeHistogram.getCount() - negativeHistogram.getCount(), negativeDifference.getCount());
         final LongStream.Builder negativeCountStream = LongStream.builder();
         negativeDifference.forEach(b -> {
             assertTrue(b.count >= 0);

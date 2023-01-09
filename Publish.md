@@ -1,5 +1,9 @@
 # Publishing to Maven
 
+**IMPORTANT: By default, Gradle uses daemon processes to run builds. Environment variables are read only on daemon startup. 
+Building a task does NOT use the environment of the task's invocation context. 
+To refresh environment variables, run "gradlew --stop" or disable using daemon for builds.**
+
 NrSketch publishes artifacts to Maven, in the "com.newrelic" group. To publish a new version, use this procedure:
 
 * Update `nrSketchVersion` in [gradle.properties](gradle.properties)
